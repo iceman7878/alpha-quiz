@@ -1,0 +1,109 @@
+/* =====================================================================
+   ALPHA — DESIGN TOKENS (Campo Silencioso)
+   Única fonte de verdade da identidade. Mudar aqui muda o produto inteiro.
+   Breakpoints (usados nas media queries, CSS não aceita var() nelas):
+     --bp-tablet 720px · --bp-desktop 1080px · --bp-wide 1440px
+   ===================================================================== */
+
+:root {
+  /* ---------- cor: marca ---------- */
+  --campo-top: #08080a;
+  --campo-bottom: #111114;
+  --osso: #e9e4db;
+  --osso-40: rgba(233, 228, 219, 0.4);
+  --osso-12: rgba(233, 228, 219, 0.12);
+  --contraluz: rgba(62, 68, 79, 0.09);
+
+  /* ---------- cor: semântica (derivada da marca, nada novo) ---------- */
+  --text: var(--osso);
+  --text-2: rgba(233, 228, 219, 0.72); /* corpo secundário */
+  --text-3: rgba(233, 228, 219, 0.46); /* legendas, labels */
+  --text-4: rgba(233, 228, 219, 0.26); /* placeholders, marcos futuros */
+  --line: var(--osso-12); /* bordas estruturais */
+  --line-soft: rgba(233, 228, 219, 0.07); /* divisórias internas */
+  --line-strong: rgba(233, 228, 219, 0.3); /* borda que chama atenção */
+  --surface-0: transparent;
+  --surface-1: var(--contraluz); /* elevação 1: contraluz */
+  --surface-2: rgba(233, 228, 219, 0.028); /* elevação 2: área de trabalho */
+  --surface-3: rgba(233, 228, 219, 0.05); /* elevação 3: selecionado */
+  --ink: var(--campo-top); /* texto sobre osso */
+
+  /* ---------- tipografia ---------- */
+  --f-wordmark: var(--font-jura), "Jura", sans-serif;
+  --f-mono: var(--font-mono), ui-monospace, "JetBrains Mono", monospace;
+  --f-body: var(--font-inter), "Inter", system-ui, sans-serif;
+
+  --t-display: clamp(46px, 9.4vw, 136px); /* manifesto, rota */
+  --t-h1: clamp(32px, 5.4vw, 64px);
+  --t-h2: clamp(26px, 3.6vw, 40px);
+  --t-h3: clamp(20px, 2vw, 24px);
+  --t-lead: clamp(17px, 1.5vw, 19px);
+  --t-body: 16px;
+  --t-small: 14px;
+  --t-caption: 12px;
+  --t-micro: 10px;
+
+  --lh-tight: 1.02;
+  --lh-heading: 1.12;
+  --lh-body: 1.6;
+
+  --tr-display: -0.045em;
+  --tr-heading: -0.022em;
+  --tr-wordmark: 0.42em;
+  --tr-micro: 0.45em;
+  --tr-label: 0.08em;
+
+  --w-light: 300;
+  --w-regular: 400;
+  --w-medium: 500;
+
+  /* ---------- espaço (base 4) ---------- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+  --s-9: 96px;
+  --s-10: 128px;
+  --gutter: clamp(20px, 5vw, 56px);
+  --section: clamp(96px, 13vw, 184px);
+  --measure: 60ch;
+  --max: 1320px;
+
+  /* ---------- forma ---------- */
+  --radius: 0; /* cantos retos, sempre (Campo Silencioso) */
+  --bw: 1px;
+  --mark: 9px; /* marcas de corte do Artefato */
+
+  /* ---------- profundidade: sem sombra, só tom e borda ---------- */
+  --shadow: none;
+  --inset-edge: inset 0 1px 0 rgba(233, 228, 219, 0.05);
+
+  /* ---------- motion ---------- */
+  --d-fast: 140ms; /* microinteração: hover, press, toggle */
+  --d-base: 280ms; /* entrada/saída de elementos */
+  --d-slow: 640ms; /* narrativa: rail, rota, revelação */
+  --e-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --e-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --stagger: 60ms;
+  --lift: 10px; /* deslocamento de entrada, único para o produto todo */
+
+  /* ---------- camadas ---------- */
+  --z-field: 0;
+  --z-content: 1;
+  --z-bar: 40;
+  --z-grain: 60;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --d-fast: 0ms;
+    --d-base: 0ms;
+    --d-slow: 0ms;
+    --stagger: 0ms;
+    --lift: 0px;
+  }
+}

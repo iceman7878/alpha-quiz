@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AuthFrame } from "@/components/area";
+import { Arrow } from "@/components/ui";
 import { isDemo, sendReset, signIn } from "@/lib/store";
 
 export default function EntrarPage() {
@@ -31,55 +33,55 @@ export default function EntrarPage() {
   }
 
   return (
-    <main className="stage">
-      <div className="screen">
-        <section className="login">
-          <span className="micro">ACESSO</span>
-          <h1 className="wordmark login__mark">ALPHA</h1>
-          <h2 className="login__title">{mode === "login" ? "Welcome back." : "Nova senha."}</h2>
-          {demo && (
-            <p className="lead">Modo demonstração: o Supabase ainda não está configurado. Entre sem senha para ver a área.</p>
-          )}
-          <form className="form" onSubmit={submit} noValidate>
-            {!demo && (
-              <label className="input">
-                <span>E-mail da compra</span>
-                <input value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" autoComplete="email" />
-              </label>
-            )}
-            {!demo && mode === "login" && (
-              <label className="input">
-                <span>Senha</span>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                />
-              </label>
-            )}
-            {msg && (
-              <p className="form__error" role="status">
-                {msg}
-              </p>
-            )}
-            <button className="btn btn--primary btn--block" type="submit" disabled={busy}>
-              {busy ? "Aguarde…" : demo ? "Entrar na demonstração" : mode === "login" ? "Entrar" : "Enviar link"}
-            </button>
-          </form>
-          {!demo && (
-            <button
-              className="back login__switch"
-              onClick={() => {
-                setMsg("");
-                setMode(mode === "login" ? "reset" : "login");
-              }}
-            >
-              {mode === "login" ? "Esqueci minha senha" : "← Voltar para entrar"}
-            </button>
-          )}
-        </section>
-      </div>
-    </main>
+    <AuthFrame
+      title={mode === "login" ? "Welcome back." : "Nova senha."}
+      lead={
+        demo
+          ? "Modo demonstração: o Supabase ainda não está configurado. Entre sem senha para ver a área."
+          : mode === "login"
+            ? "Entre para continuar o seu build."
+            : "Informe o e-mail da compra. Enviamos um link para criar uma nova senha."
+      }
+    >
+      <form className="auth__form" onSubmit={submit} noValidate>
+        {!demo && (
+          <label className="box">
+            <span>E-mail da compra</span>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" autoComplete="email" />
+          </label>
+        )}
+        {!demo && mode === "login" && (
+          <label className="box">
+            <span>Senha</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          </label>
+        )}
+        {msg && (
+          <p className="alert" role="status">
+            {msg}
+          </p>
+        )}
+        <button className="btn btn--primary btn--block btn--lg" type="submit" disabled={busy}>
+          {busy ? "Aguarde…" : demo ? "Entrar na demonstração" : mode === "login" ? "Entrar" : "Enviar link"}{" "}
+          {!busy && <Arrow />}
+        </button>
+      </form>
+      {!demo && (
+        <button
+          className="btn btn--quiet auth__switch"
+          onClick={() => {
+            setMsg("");
+            setMode(mode === "login" ? "reset" : "login");
+          }}
+        >
+          {mode === "login" ? "Esqueci minha senha" : "← Voltar para entrar"}
+        </button>
+      )}
+    </AuthFrame>
   );
 }

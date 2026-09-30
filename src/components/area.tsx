@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { BuildContent } from "@/lib/build";
 import { currentEmail, isDemo, loadContent, loadMember, loadProgress, mode, signOut, type Member, type Progress } from "@/lib/store";
+import { Rail } from "./ui";
+
+export { CopyButton } from "./ui";
 
 type AreaState =
   | { status: "loading" }
@@ -47,55 +50,93 @@ export function useArea() {
   return { state, reload };
 }
 
-export function Shell({ children, back }: { children: React.ReactNode; back?: { href: string; label: string } }) {
+/** Rail de navegação dos 7 dias — sempre visível: onde estou, onde estive, quanto falta. */
+export function DayRail(props: { progress: Progress; current?: number; labels?: boolean; className?: string }) {
+  const days = [1, 2, 3, 4, 5, 6, 7];
+  const done = days.filter((d) => props.progress[d]?.completed).length;
+  const next = days.find((d) => !props.progress[d]?.completed);
+  const current = props.current ?? next;
+  return (
+    <Rail
+      className={props.className}
+      ariaLabel="Os 7 dias do build"
+      labels={props.labels}
+      progress={Math.min(1, done / 6)}
+      nodes={days.map((d) => ({
+        label: `0${d}`,
+        title: `DAY 0${d}`,
+        done: !!props.progress[d]?.completed,
+        current: d === current,
+        href: `/build/dia/${d}`,
+      }))}
+    />
+  );
+}
+
+export function Shell(props: {
+  children: ReactNode;
+  back?: { href: string; label: string };
+  progress?: Progress;
+  currentDay?: number;
+}) {
   const router = useRouter();
+  const done = props.progress ? Object.values(props.progress).filter((p) => p.completed).length : 0;
   return (
     <main className="area">
-      <header className="area__head">
-        {back ? (
-          <Link className="back" href={back.href}>
-            ← {back.label}
-          </Link>
-        ) : (
-          <span className="area__mark">ALPHA</span>
+      <header className="area__head wrap">
+        <div className="area__left">
+          {props.back ? (
+            <Link className="btn btn--quiet" href={props.back.href}>
+              ← {props.back.label}
+            </Link>
+          ) : (
+            <span className="wordmark area__mark">ALPHA</span>
+          )}
+        </div>
+        {props.progress && (
+          <div className="area__rail">
+            <DayRail progress={props.progress} current={props.currentDay} />
+            <span className="area__count num">
+              {done}/7
+            </span>
+          </div>
         )}
-        <button
-          className="back"
-          onClick={async () => {
-            await signOut();
-            router.replace("/entrar");
-          }}
-        >
-          Sair
-        </button>
+        <div className="area__right">
+          <button
+            className="btn btn--quiet"
+            onClick={async () => {
+              await signOut();
+              router.replace("/entrar");
+            }}
+          >
+            Sair
+          </button>
+        </div>
       </header>
-      {isDemo() && <p className="demo-note">Modo demonstração — o progresso fica salvo só neste navegador.</p>}
-      <div className="area__body">{children}</div>
+      {isDemo() && (
+        <p className="demo-note wrap">
+          <span>Modo demonstração — o progresso fica salvo só neste navegador.</span>
+        </p>
+      )}
+      <div className="area__body wrap">{props.children}</div>
     </main>
   );
 }
 
 export function AreaFallback({ state }: { state: AreaState }) {
-  if (state.status === "misconfigured") {
+  if (state.status === "misconfigured" || state.status === "noaccess") {
+    const noaccess = state.status === "noaccess";
     return (
       <main className="area">
-        <div className="area__body area__center">
-          <h1 className="area__title">Área em configuração.</h1>
-          <p className="lead">Estamos finalizando a área de membros. Tente novamente em alguns minutos.</p>
-        </div>
-      </main>
-    );
-  }
-  if (state.status === "noaccess") {
-    return (
-      <main className="area">
-        <div className="area__body area__center">
-          <h1 className="area__title">Acesso não encontrado.</h1>
+        <div className="area__body area__center wrap">
+          <span className="wordmark area__mark">ALPHA</span>
+          <h1 className="h1">{noaccess ? "Acesso não encontrado." : "Área em configuração."}</h1>
           <p className="lead">
-            Não encontramos uma compra ativa para este e-mail. Se você comprou com outro endereço, entre com ele — ou
-            responda o e-mail da compra que resolvemos.
+            {noaccess
+              ? "Não encontramos uma compra ativa para este e-mail. Se você comprou com outro endereço, entre com ele — ou responda o e-mail da compra que resolvemos."
+              : "Estamos finalizando a área de membros. Tente novamente em alguns minutos."}
           </p>
-          <div className="actions">
+          {noaccess && (
             <button
               className="btn btn--ghost"
               onClick={async () => {
@@ -105,43 +146,42 @@ export function AreaFallback({ state }: { state: AreaState }) {
             >
               Entrar com outro e-mail
             </button>
-          </div>
+          )}
         </div>
       </main>
     );
   }
   return (
-    <main className="area">
-      <div className="area__body area__center">
-        <div className="bar area__loading">
-          <div className="bar__fill" />
+    <main className="area" aria-busy="true">
+      <div className="area__body area__center wrap">
+        <div className="loading" aria-label="Carregando">
+          <span />
         </div>
       </div>
     </main>
   );
 }
 
-export function CopyButton({ text, label = "Copiar" }: { text: string; label?: string }) {
-  const [done, setDone] = useState(false);
+/** Moldura das telas de acesso (login, senha): monumento à esquerda, formulário à direita. */
+export function AuthFrame(props: { title: string; lead?: string; children: ReactNode }) {
   return (
-    <button
-      className="copy"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(text);
-        } catch {
-          const t = document.createElement("textarea");
-          t.value = text;
-          document.body.appendChild(t);
-          t.select();
-          document.execCommand("copy");
-          t.remove();
-        }
-        setDone(true);
-        window.setTimeout(() => setDone(false), 1600);
-      }}
-    >
-      {done ? "Copiado" : label}
-    </button>
+    <main className="auth">
+      <div className="auth__side">
+        <span className="micro">ACESSO</span>
+        <span className="wordmark auth__mark">ALPHA</span>
+        <span className="auth__line">7-Day Build · Discover → Build → Ship</span>
+      </div>
+      <section className="auth__main">
+        <h1 className="h1 auth__title enter">{props.title}</h1>
+        {props.lead && (
+          <p className="lead enter" style={{ "--i": 1 } as React.CSSProperties}>
+            {props.lead}
+          </p>
+        )}
+        <div className="enter" style={{ "--i": 2 } as React.CSSProperties}>
+          {props.children}
+        </div>
+      </section>
+    </main>
   );
 }

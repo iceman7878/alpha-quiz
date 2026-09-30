@@ -2,7 +2,10 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Geist_Mono, Inter, Jura } from "next/font/google";
 import { META_PIXEL_ID } from "@/config";
-import "./globals.css";
+import "@/styles/tokens.css";
+import "@/styles/base.css";
+import "@/styles/funnel.css";
+import "@/styles/area.css";
 
 const jura = Jura({ subsets: ["latin"], weight: "300", variable: "--font-jura", display: "swap" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });

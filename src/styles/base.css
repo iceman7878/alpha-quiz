@@ -1,0 +1,866 @@
+/* =====================================================================
+   ALPHA — BASE + COMPONENTES COMPARTILHADOS
+   Tipografia, botões, campos, Rail, Artefato, Mapa de rotas, motion.
+   ===================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+html {
+  background: var(--campo-bottom);
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  min-height: 100dvh;
+  background: linear-gradient(180deg, var(--campo-top), var(--campo-bottom));
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--f-body);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+/* Grão finíssimo + vinheta: a superfície respira, não faz ruído */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-grain);
+}
+body::before {
+  opacity: 0.055;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+body::after {
+  background: radial-gradient(120% 90% at 28% 36%, transparent 55%, rgba(0, 0, 0, 0.42) 100%);
+}
+
+button,
+a,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+a {
+  text-decoration: none;
+}
+::selection {
+  background: var(--osso);
+  color: var(--ink);
+}
+:focus-visible {
+  outline: var(--bw) solid var(--osso);
+  outline-offset: 3px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- layout ---------- */
+
+.wrap {
+  width: 100%;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
+}
+
+/* ---------- tipografia ---------- */
+
+.wordmark {
+  margin: 0;
+  font-family: var(--f-wordmark);
+  font-weight: var(--w-light);
+  letter-spacing: var(--tr-wordmark);
+  text-transform: uppercase;
+  line-height: 1;
+}
+.display {
+  margin: 0;
+  font-size: var(--t-display);
+  font-weight: var(--w-light);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tr-display);
+}
+.h1 {
+  margin: 0;
+  font-size: var(--t-h1);
+  font-weight: var(--w-light);
+  line-height: var(--lh-heading);
+  letter-spacing: var(--tr-heading);
+}
+.h2 {
+  margin: 0;
+  font-size: var(--t-h2);
+  font-weight: var(--w-regular);
+  line-height: var(--lh-heading);
+  letter-spacing: var(--tr-heading);
+}
+.h3 {
+  margin: 0;
+  font-size: var(--t-h3);
+  font-weight: var(--w-regular);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.lead {
+  margin: 0;
+  max-width: var(--measure);
+  color: var(--text-2);
+  font-size: var(--t-lead);
+  line-height: 1.55;
+}
+.body {
+  margin: 0;
+  max-width: var(--measure);
+  color: var(--text-2);
+}
+.caption {
+  color: var(--text-3);
+  font-size: var(--t-caption);
+  line-height: 1.5;
+}
+/* Micro-tipografia de instrumento — máx. 3 por tela */
+.micro {
+  display: inline-block;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  line-height: 1.4;
+  letter-spacing: var(--tr-micro);
+  text-transform: uppercase;
+  color: var(--osso);
+  opacity: 0.44;
+}
+/* Label de interface (não é marcador de instrumento) */
+.label {
+  font-size: var(--t-caption);
+  font-weight: var(--w-medium);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- botões ---------- */
+
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  min-height: 52px;
+  padding: 0 var(--s-6);
+  border: var(--bw) solid var(--line);
+  border-radius: var(--radius);
+  background: transparent;
+  font-size: 15px;
+  font-weight: var(--w-medium);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--d-fast) var(--e-out),
+    border-color var(--d-fast) var(--e-out),
+    color var(--d-fast) var(--e-out),
+    transform var(--d-fast) var(--e-out);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+}
+.btn--primary {
+  background: var(--osso);
+  border-color: var(--osso);
+  color: var(--ink);
+}
+.btn--primary:hover {
+  background: #f4f0e9;
+}
+.btn--primary:active {
+  background: #d8d2c7;
+}
+.btn--ghost {
+  color: var(--text-2);
+}
+.btn--ghost:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+.btn--ghost:active {
+  background: var(--surface-1);
+}
+.btn--quiet {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  color: var(--text-3);
+  font-weight: var(--w-regular);
+}
+.btn--quiet:hover {
+  color: var(--text);
+}
+.btn--block {
+  width: 100%;
+}
+.btn--lg {
+  min-height: 60px;
+  padding: 0 var(--s-7);
+  font-size: 16px;
+}
+/* Seta que avança no hover: o botão aponta para o próximo passo */
+.btn__arrow {
+  display: inline-block;
+  transition: transform var(--d-base) var(--e-out);
+}
+.btn:hover .btn__arrow {
+  transform: translateX(4px);
+}
+.btn__meta {
+  font-weight: var(--w-regular);
+  opacity: 0.6;
+}
+
+/* ---------- campos: editoriais (linha de base, não caixa) ---------- */
+
+.fieldset {
+  display: grid;
+  gap: var(--s-6);
+}
+.fld {
+  position: relative;
+  display: grid;
+  gap: var(--s-2);
+}
+.fld__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+}
+.fld__idx {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.2em;
+  color: var(--text-4);
+  transition: color var(--d-base) var(--e-out);
+}
+.fld__label {
+  font-size: 15px;
+  font-weight: var(--w-medium);
+  color: var(--text);
+}
+.fld__tick {
+  margin-left: auto;
+  width: 14px;
+  height: 14px;
+  opacity: 0;
+  transform: translateY(2px);
+  transition:
+    opacity var(--d-base) var(--e-out),
+    transform var(--d-base) var(--e-out);
+}
+.fld.is-filled .fld__tick {
+  opacity: 1;
+  transform: none;
+}
+.fld.is-filled .fld__idx {
+  color: var(--text-2);
+}
+.fld__input {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: var(--s-3) 0;
+  border: 0;
+  border-bottom: var(--bw) solid var(--line);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1.5;
+  resize: none;
+  transition: border-color var(--d-base) var(--e-out);
+}
+.fld__input::placeholder {
+  color: var(--text-4);
+}
+.fld__input:hover {
+  border-bottom-color: var(--line-strong);
+}
+.fld__input:focus {
+  outline: none;
+  border-bottom-color: var(--osso);
+}
+/* Linha que acende da esquerda no foco: feedback de onde você está escrevendo */
+.fld__line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--bw);
+  background: var(--osso);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--d-slow) var(--e-out);
+  pointer-events: none;
+}
+.fld__control {
+  position: relative;
+}
+.fld__control:focus-within .fld__line {
+  transform: scaleX(1);
+}
+.fld__hint {
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Campo em caixa (formulários curtos: captura, login) */
+.box {
+  display: grid;
+  gap: var(--s-2);
+}
+.box > span {
+  color: var(--text-2);
+  font-size: 13px;
+}
+.box input {
+  width: 100%;
+  min-height: 54px;
+  padding: 0 var(--s-4);
+  border: var(--bw) solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 16px;
+  transition:
+    border-color var(--d-fast) var(--e-out),
+    background-color var(--d-fast) var(--e-out);
+}
+.box input::placeholder {
+  color: var(--text-4);
+}
+.box input:hover {
+  border-color: var(--line-strong);
+}
+.box input:focus {
+  outline: none;
+  border-color: var(--osso);
+  background: var(--surface-3);
+}
+.check {
+  display: flex;
+  gap: var(--s-3);
+  align-items: flex-start;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.check input {
+  flex: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: var(--bw) solid var(--line-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color var(--d-fast) var(--e-out),
+    box-shadow var(--d-fast) var(--e-out);
+}
+.check input:checked {
+  background: var(--osso);
+  box-shadow: inset 0 0 0 4px var(--campo-top);
+}
+.check input:active {
+  transform: scale(0.94);
+}
+.alert {
+  margin: 0;
+  padding-left: var(--s-3);
+  border-left: var(--bw) solid var(--osso);
+  color: var(--text);
+  font-size: 13px;
+  animation: rise var(--d-base) var(--e-out) both;
+}
+
+/* ---------- RAIL: a sequência da ALPHA ---------- */
+/* Marcos quadrados sobre uma linha. Feito = cheio; atual = anel; futuro = traço. */
+
+.rail {
+  --rail-gap: 1fr;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--rail-n, 7), 1fr);
+  align-items: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rail::before,
+.rail__fill {
+  content: "";
+  position: absolute;
+  left: calc(50% / var(--rail-n, 7));
+  right: calc(50% / var(--rail-n, 7));
+  top: 50%;
+  height: var(--bw);
+  background: var(--line);
+}
+.rail__fill {
+  right: auto;
+  width: calc((100% - 100% / var(--rail-n, 7)) * var(--rail-p, 0));
+  background: var(--osso);
+  transition: width var(--d-slow) var(--e-out);
+}
+.rail__node {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 24px;
+}
+.rail__node > span,
+.rail__node > a {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+}
+.rail__node i {
+  display: block;
+  width: 7px;
+  height: 7px;
+  background: var(--campo-top);
+  border: var(--bw) solid var(--line-strong);
+  transition:
+    background-color var(--d-base) var(--e-out),
+    border-color var(--d-base) var(--e-out),
+    transform var(--d-base) var(--e-out);
+}
+.rail__node.is-done i {
+  background: var(--osso);
+  border-color: var(--osso);
+}
+.rail__node.is-current i {
+  width: 11px;
+  height: 11px;
+  border-color: var(--osso);
+  background: var(--campo-top);
+  box-shadow: inset 0 0 0 2px var(--campo-top), inset 0 0 0 6px var(--osso);
+}
+.rail__node a:hover i {
+  transform: scale(1.3);
+}
+.rail__node a:active i {
+  transform: scale(1.1);
+}
+.rail__labels {
+  display: grid;
+  grid-template-columns: repeat(var(--rail-n, 7), 1fr);
+  margin-top: var(--s-2);
+  list-style: none;
+  padding: 0;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: var(--text-4);
+}
+.rail__labels .is-current {
+  color: var(--text);
+}
+.rail__labels .is-done {
+  color: var(--text-3);
+}
+
+/* ---------- ARTEFATO: o que foi construído ---------- */
+/* Moldura com marcas de corte nos cantos — prova de gráfica, não "card". */
+
+.artifact {
+  position: relative;
+  padding: var(--s-6) var(--s-5) var(--s-5);
+  background: linear-gradient(160deg, rgba(233, 228, 219, 0.045), rgba(233, 228, 219, 0.012) 55%, transparent);
+  box-shadow: var(--inset-edge);
+}
+.artifact::before,
+.artifact::after,
+.artifact > .artifact__marks::before,
+.artifact > .artifact__marks::after {
+  content: "";
+  position: absolute;
+  width: var(--mark);
+  height: var(--mark);
+  border-color: var(--osso);
+  border-style: solid;
+  opacity: 0.55;
+  transition: opacity var(--d-base) var(--e-out);
+}
+.artifact::before {
+  top: 0;
+  left: 0;
+  border-width: var(--bw) 0 0 var(--bw);
+}
+.artifact::after {
+  top: 0;
+  right: 0;
+  border-width: var(--bw) var(--bw) 0 0;
+}
+.artifact > .artifact__marks::before {
+  bottom: 0;
+  left: 0;
+  border-width: 0 0 var(--bw) var(--bw);
+}
+.artifact > .artifact__marks::after {
+  bottom: 0;
+  right: 0;
+  border-width: 0 var(--bw) var(--bw) 0;
+}
+.artifact.is-sealed::before,
+.artifact.is-sealed::after,
+.artifact.is-sealed > .artifact__marks::before,
+.artifact.is-sealed > .artifact__marks::after {
+  opacity: 1;
+}
+.artifact__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding-bottom: var(--s-4);
+  border-bottom: var(--bw) solid var(--line-soft);
+}
+.artifact__title {
+  font-size: var(--t-caption);
+  font-weight: var(--w-medium);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.artifact__body {
+  margin: 0;
+  padding: var(--s-5) 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--f-body);
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--text);
+}
+.artifact__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding-top: var(--s-4);
+  border-top: var(--bw) solid var(--line-soft);
+  color: var(--text-3);
+  font-size: var(--t-caption);
+}
+.artifact__state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.artifact__state::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border: var(--bw) solid var(--text-3);
+  transition:
+    background-color var(--d-base) var(--e-out),
+    border-color var(--d-base) var(--e-out);
+}
+.artifact.is-sealed .artifact__state {
+  color: var(--text);
+}
+.artifact.is-sealed .artifact__state::before {
+  background: var(--osso);
+  border-color: var(--osso);
+}
+
+/* ---------- botão copiar ---------- */
+
+.copy {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 36px;
+  padding: 0 var(--s-3);
+  border: var(--bw) solid var(--line);
+  border-radius: var(--radius);
+  background: transparent;
+  font-size: var(--t-caption);
+  font-weight: var(--w-medium);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    border-color var(--d-fast) var(--e-out),
+    background-color var(--d-fast) var(--e-out),
+    color var(--d-fast) var(--e-out);
+}
+.copy:hover {
+  border-color: var(--line-strong);
+}
+.copy:active {
+  background: var(--surface-1);
+}
+.copy.is-done {
+  border-color: var(--osso);
+  background: var(--osso);
+  color: var(--ink);
+}
+
+/* ---------- MAPA DE ROTAS ---------- */
+
+.routemap {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.routemap path {
+  fill: none;
+  stroke: var(--osso);
+  stroke-width: 0.9;
+  stroke-opacity: 0.16;
+  transition: stroke-opacity var(--d-slow) var(--e-out);
+}
+.routemap .is-picked path {
+  stroke-opacity: 1;
+}
+.routemap text {
+  fill: var(--osso);
+  fill-opacity: 0.32;
+  font-family: var(--f-body);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  transition: fill-opacity var(--d-slow) var(--e-out);
+}
+.routemap .is-picked text {
+  fill-opacity: 1;
+}
+.routemap rect {
+  fill: var(--campo-top);
+  stroke: var(--osso);
+  stroke-opacity: 0.4;
+  vector-effect: non-scaling-stroke;
+}
+.routemap .is-picked rect {
+  fill: var(--osso);
+  stroke-opacity: 1;
+}
+.routemap .origin {
+  fill: var(--osso);
+}
+/* Desenho progressivo (tela de análise) */
+.routemap--draw path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw var(--d-slow) var(--e-inout) forwards;
+  animation-delay: calc(var(--i, 0) * 180ms + 200ms);
+}
+.routemap--draw g:not(.is-picked) text,
+.routemap--draw g:not(.is-picked) rect {
+  opacity: 0;
+  animation: rise var(--d-base) var(--e-out) forwards;
+  animation-delay: calc(var(--i, 0) * 180ms + 600ms);
+}
+.routemap--draw .is-picked path {
+  stroke-opacity: 0.16;
+  animation:
+    draw var(--d-slow) var(--e-inout) forwards,
+    pick var(--d-slow) var(--e-out) forwards;
+  animation-delay: calc(var(--i, 0) * 180ms + 200ms), 1500ms;
+}
+.routemap--draw .is-picked text,
+.routemap--draw .is-picked rect {
+  opacity: 0;
+  animation: rise var(--d-base) var(--e-out) forwards;
+  animation-delay: 1500ms;
+}
+
+/* ---------- estado de salvamento ---------- */
+
+.savestate {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 96px;
+  color: var(--text-3);
+  font-size: var(--t-caption);
+}
+.savestate::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border: var(--bw) solid var(--text-3);
+  transition:
+    background-color var(--d-base) var(--e-out),
+    border-color var(--d-base) var(--e-out),
+    transform var(--d-base) var(--e-out);
+}
+.savestate[data-state="saving"]::before {
+  animation: pulse 900ms var(--e-inout) infinite alternate;
+}
+.savestate[data-state="saved"] {
+  color: var(--text-2);
+}
+.savestate[data-state="saved"]::before {
+  background: var(--osso);
+  border-color: var(--osso);
+}
+.savestate[data-state="error"] {
+  color: var(--text);
+}
+.savestate span {
+  animation: rise var(--d-base) var(--e-out) both;
+}
+
+/* ---------- revelação e motion ---------- */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(var(--lift));
+  transition:
+    opacity var(--d-slow) var(--e-out),
+    transform var(--d-slow) var(--e-out);
+  transition-delay: calc(var(--i, 0) * var(--stagger));
+}
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+/* Linha de título que sobe de dentro de uma máscara */
+.mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.06em;
+}
+.mask > span {
+  display: block;
+  animation: mask-up var(--d-slow) var(--e-out) both;
+  animation-delay: calc(var(--i, 0) * 90ms + 80ms);
+}
+.enter {
+  animation: rise var(--d-base) var(--e-out) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger));
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--lift));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes mask-up {
+  from {
+    transform: translateY(105%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes pick {
+  to {
+    stroke-opacity: 1;
+  }
+}
+@keyframes pulse {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fill-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* ---------- transições de tela (View Transitions API, nativa) ---------- */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--d-base);
+  animation-timing-function: var(--e-out);
+}
+::view-transition-old(screen) {
+  animation: vt-out 180ms var(--e-out) both;
+}
+::view-transition-new(screen) {
+  animation: vt-in var(--d-base) var(--e-out) both;
+}
+@keyframes vt-out {
+  to {
+    opacity: 0;
+    transform: translateY(calc(var(--lift) * -1));
+  }
+}
+@keyframes vt-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--lift));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

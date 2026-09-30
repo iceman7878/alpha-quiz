@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AuthFrame } from "@/components/area";
+import { Arrow } from "@/components/ui";
 import { setPassword } from "@/lib/store";
 
 /** Destino do link de convite (pós-compra) e do link de recuperação de senha. */
@@ -24,33 +26,25 @@ export default function DefinirSenhaPage() {
   }
 
   return (
-    <main className="stage">
-      <div className="screen">
-        <section className="login">
-          <span className="micro">ACESSO</span>
-          <h1 className="wordmark login__mark">ALPHA</h1>
-          <h2 className="login__title">Seu acesso ao ALPHA LAUNCH está pronto.</h2>
-          <p className="lead">Crie sua senha para entrar no 7-Day Build.</p>
-          <form className="form" onSubmit={submit} noValidate>
-            <label className="input">
-              <span>Senha</span>
-              <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" />
-            </label>
-            <label className="input">
-              <span>Repita a senha</span>
-              <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" />
-            </label>
-            {msg && (
-              <p className="form__error" role="alert">
-                {msg}
-              </p>
-            )}
-            <button className="btn btn--primary btn--block" type="submit" disabled={busy}>
-              {busy ? "Salvando…" : "Criar senha e entrar"}
-            </button>
-          </form>
-        </section>
-      </div>
-    </main>
+    <AuthFrame title="Seu acesso ao ALPHA LAUNCH está pronto." lead="Crie sua senha para entrar no 7-Day Build.">
+      <form className="auth__form" onSubmit={submit} noValidate>
+        <label className="box">
+          <span>Senha</span>
+          <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" />
+        </label>
+        <label className="box">
+          <span>Repita a senha</span>
+          <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" />
+        </label>
+        {msg && (
+          <p className="alert" role="alert">
+            {msg}
+          </p>
+        )}
+        <button className="btn btn--primary btn--block btn--lg" type="submit" disabled={busy}>
+          {busy ? "Salvando…" : "Criar senha e entrar"} {!busy && <Arrow />}
+        </button>
+      </form>
+    </AuthFrame>
   );
 }

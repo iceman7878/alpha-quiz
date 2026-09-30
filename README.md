@@ -32,7 +32,10 @@ Modelo em [.env.example](.env.example). Fallback do checkout em `src/config.ts`.
 - Perguntas, pesos e rotas do quiz: `src/lib/quiz.ts`
 - Conteúdo dos 7 dias (só servidor): `src/lib/build-content.ts`
 - Captura de lead: `src/app/api/lead/route.ts`
-- Telas: `src/components/Quiz.tsx` · estilo: `src/app/globals.css`
+- Telas do funil: `src/components/Quiz.tsx` (orquestra) + `src/components/funnel/*`
+- Componentes da marca (Rail, Artefato, Mapa de rotas, Reveal, Copy): `src/components/ui.tsx`
+- **Design tokens** (cor, tipo, espaço, motion, breakpoints): `src/styles/tokens.css` — mudar aqui muda o produto inteiro
+- Estilos: `src/styles/base.css` (base + componentes), `funnel.css`, `area.css`
 - UTM + Pixel: `src/lib/tracking.ts`
 
 ## Rastreamento
