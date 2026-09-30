@@ -18,7 +18,7 @@ npm run build    # build de produção
 |---|---|
 | `NEXT_PUBLIC_CHECKOUT_URL` | Link do checkout. Único lugar a trocar quando a plataforma for definida. |
 | `NEXT_PUBLIC_META_PIXEL_ID` | ID do Meta Pixel. Vazio = pixel desligado. |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Projeto Supabase (Settings → API). Sem elas, `/build` roda em modo demonstração. |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Projeto Supabase (Settings → API). Sem elas, `/build` roda em modo demonstração só em desenvolvimento ou com `NEXT_PUBLIC_DEMO=1` (usar apenas no ambiente Preview da Vercel). |
 | `SUPABASE_SERVICE_ROLE_KEY` | Chave service role — só servidor. Grava leads e cria membros. |
 | `CHECKOUT_WEBHOOK_SECRET` | Token do webhook do checkout. |
 | `NEXT_PUBLIC_SITE_URL` | Domínio final, usado no link do convite. |
