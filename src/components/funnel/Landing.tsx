@@ -51,8 +51,8 @@ export function Landing(props: { onStart: () => void; onSaved?: () => void }) {
             </span>
           </h1>
           <p className="lead hero__lead enter" style={{ "--i": 4 } as CSSProperties}>
-            Um sistema de execução de 7 dias para transformar uma direção em uma oferta digital pronta para o mercado.
-            Começa pela sua rota.
+            Um sistema de execução de 7 dias para transformar uma direção em uma oferta digital pronta para o mercado.{" "}
+            <span className="hero__next">Descubra por onde começar.</span>
           </p>
           <div className="hero__actions enter" style={{ "--i": 5 } as CSSProperties}>
             <button className="btn btn--primary btn--lg" onClick={props.onStart}>

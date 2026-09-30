@@ -83,7 +83,7 @@ export function Question(props: {
           })}
         </ol>
         <p className="caption qstep__keys">
-          Toque na resposta — ou use as teclas <kbd>A</kbd>–<kbd>{String.fromCharCode(64 + q.options.length)}</kbd>.
+          Clique na resposta — ou use as teclas <kbd>A</kbd>–<kbd>{String.fromCharCode(64 + q.options.length)}</kbd>.
         </p>
       </div>
     </section>
@@ -91,12 +91,14 @@ export function Question(props: {
 }
 
 const ROUTING_LINES = ["Ponto de partida", "Exposição", "Ritmo", "Rota definida"];
-export const ROUTING_MS = 2700;
+// Sequência curta: comunica o diagnóstico sem fazer esperar. O mapa acende a rota em
+// --route-pick (1100ms); a tela segue para a captura logo depois do destaque assentar.
+export const ROUTING_MS = 2000;
 
 export function Routing({ route }: { route: Route }) {
   const [step, setStep] = useState(0);
   useEffect(() => {
-    const t = ROUTING_LINES.map((_, i) => window.setTimeout(() => setStep(i + 1), 420 + i * 520));
+    const t = ROUTING_LINES.map((_, i) => window.setTimeout(() => setStep(i + 1), 250 + i * 300));
     return () => t.forEach(window.clearTimeout);
   }, []);
   return (
@@ -125,7 +127,7 @@ function normalizeWhatsapp(raw: string): string | null {
   return /^55\d{10,11}$/.test(d) ? d : null;
 }
 
-export function Capture(props: { route: Route; onSubmit: (lead: Lead, consent: boolean) => Promise<void> }) {
+export function Capture(props: { route: Route; onSubmit: (lead: Lead, consent: boolean, trap: string) => Promise<void> }) {
   const [nome, setNome] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [email, setEmail] = useState("");
@@ -135,6 +137,7 @@ export function Capture(props: { route: Route; onSubmit: (lead: Lead, consent: b
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    const trap = String(new FormData(e.currentTarget as HTMLFormElement).get("empresa") ?? "");
     const phone = normalizeWhatsapp(whatsapp);
     if (!nome.trim()) return setError("Diga como podemos te chamar.");
     if (!phone) return setError("Confira o WhatsApp: DDD + número.");
@@ -142,7 +145,7 @@ export function Capture(props: { route: Route; onSubmit: (lead: Lead, consent: b
     if (!consent) return setError("Para salvar o plano, precisamos do seu aceite.");
     setError("");
     setSending(true);
-    await props.onSubmit({ nome: nome.trim().split(/\s+/)[0], whatsapp: phone, email: email.trim() }, consent);
+    await props.onSubmit({ nome: nome.trim().split(/\s+/)[0], whatsapp: phone, email: email.trim() }, consent, trap);
   }
 
   return (
@@ -177,6 +180,8 @@ export function Capture(props: { route: Route; onSubmit: (lead: Lead, consent: b
           <span>E-mail (opcional)</span>
           <input value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" autoComplete="email" maxLength={120} />
         </label>
+        {/* Armadilha para robôs: invisível para pessoas, preenchida por spam automático. */}
+        <input className="hp" name="empresa" tabIndex={-1} autoComplete="off" aria-hidden />
         <label className="check">
           <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
           <span>Aceito receber o plano e mensagens da ALPHA pelo WhatsApp. Posso sair quando quiser.</span>

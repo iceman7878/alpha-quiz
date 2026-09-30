@@ -106,6 +106,13 @@ function DayView(props: {
   const route = props.route ? ROUTES[props.route] : null;
   const hasWork = Object.values(props.initial).some((v) => v.trim());
 
+  // Leva direto ao trabalho: útil no mobile, onde o contexto vem antes dos campos.
+  function goToFirstField() {
+    const el = document.getElementById(`f-${day.fields[0].id}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    el?.focus({ preventScroll: true });
+  }
+
   return (
     <Shell back={{ href: "/build", label: "Seu build" }} progress={progress} currentDay={day.n}>
       {day.n === 1 && (
@@ -265,7 +272,11 @@ function DayView(props: {
                     ? save.msg
                     : hasWork || filled
                       ? "Salvamento automático"
-                      : "Comece pelo campo 01"}
+                      : (
+                          <button className="savestate__go" onClick={goToFirstField}>
+                            Comece pelo campo 01 ↓
+                          </button>
+                        )}
             </span>
           </span>
           <div className="actionbar__btns">

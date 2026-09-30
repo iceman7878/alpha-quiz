@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CHECKOUT_PREFILL, CHECKOUT_URL, OFFER } from "@/config";
 import { QUESTIONS, ROUTES, decodeAnswers, encodeAnswers, scoreAnswers } from "@/lib/quiz";
 import { buildCheckoutUrl, captureUtm, track, trackCustom, type Utm } from "@/lib/tracking";
-import { Field } from "./Field";
+import { Field, type FieldVariant } from "./Field";
 import { Landing } from "./funnel/Landing";
 import { Result } from "./funnel/Result";
 import { Capture, Question, ROUTING_MS, Routing, type Lead } from "./funnel/Steps";
@@ -21,6 +21,14 @@ type Stage =
   | { kind: "result" };
 
 const SAVE_KEY = "alpha_quiz";
+// Intensidade do campo por etapa; o resultado fica sem decoração para a oferta respirar.
+const FIELD: Record<Stage["kind"], FieldVariant | null> = {
+  intro: "wide",
+  question: "quiet",
+  routing: "origin",
+  capture: "whisper",
+  result: null,
+};
 const ADVANCE_MS = 260;
 
 export default function Quiz() {
@@ -117,13 +125,13 @@ export default function Quiz() {
     go({ kind: "result" });
   }
 
-  async function submitLead(l: Lead, consent: boolean) {
+  async function submitLead(l: Lead, consent: boolean, trap: string) {
     if (!route) return;
     try {
       await fetch("/api/lead", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...l, perfil: route.key, r: encodeAnswers(answers), utm, consentimento: consent }),
+        body: JSON.stringify({ ...l, perfil: route.key, r: encodeAnswers(answers), utm, consentimento: consent, empresa: trap }),
         signal: AbortSignal.timeout(6000),
       });
     } catch {
@@ -140,9 +148,7 @@ export default function Quiz() {
 
   return (
     <main className={`stage stage--${stage.kind}`}>
-      {(stage.kind === "intro" || stage.kind === "question" || stage.kind === "routing") && (
-        <Field variant={stage.kind === "intro" ? "wide" : "quiet"} />
-      )}
+      {FIELD[stage.kind] && <Field variant={FIELD[stage.kind]!} />}
       <div className="screen" key={stageKey}>
         {stage.kind === "intro" && <Landing onStart={start} onSaved={saved ? showSaved : undefined} />}
 

@@ -1,20 +1,23 @@
 // Campo de propagação: arcos concêntricos que perdem intensidade sem perder ordem.
+// A intensidade acompanha o ritmo do funil: presente na abertura, quieto nas perguntas,
+// protagonista no diagnóstico, quase ausente na captura. Resultado e área não usam.
 
-type Variant = "wide" | "quiet" | "origin";
+export type FieldVariant = "wide" | "quiet" | "origin" | "whisper";
 
-const CENTERS: Record<Variant, { cx: number; cy: number; opacity: number }> = {
+const CENTERS: Record<FieldVariant, { cx: number; cy: number; opacity: number }> = {
   wide: { cx: 360, cy: 120, opacity: 1 },
-  quiet: { cx: 420, cy: -40, opacity: 0.55 },
-  origin: { cx: 330, cy: 92, opacity: 1 },
+  quiet: { cx: 420, cy: -40, opacity: 0.4 },
+  origin: { cx: 330, cy: 92, opacity: 0.8 },
+  whisper: { cx: 420, cy: -40, opacity: 0.18 },
 };
 
 const RINGS = Array.from({ length: 11 }, (_, i) => 36 + i * i * 7 + i * 22);
 
-export function Field({ variant }: { variant: Variant }) {
+export function Field({ variant }: { variant: FieldVariant }) {
   const c = CENTERS[variant];
   return (
     <svg className="field" viewBox="0 0 400 800" preserveAspectRatio="xMaxYMin slice" aria-hidden>
-      <g style={{ opacity: c.opacity }}>
+      <g className="field__rings" style={{ opacity: c.opacity }}>
         {RINGS.map((r, i) => (
           <circle
             key={r}

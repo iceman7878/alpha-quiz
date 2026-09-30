@@ -44,11 +44,22 @@ export async function POST(req: Request) {
     consentimento: body.consentimento === true,
   };
 
+  // Armadilha anti-spam preenchida: responde como sucesso e descarta, sem avisar o robô.
+  if (clean(body.empresa)) return NextResponse.json({ ok: true });
+
   if (!lead.nome || !/^55\d{10,11}$/.test(whatsapp) || !lead.consentimento) {
     return NextResponse.json({ ok: false, error: "invalid" }, { status: 422 });
   }
 
   const db = supabaseAdmin();
+  const target = process.env.LEAD_WEBHOOK_URL;
+
+  // Em produção sem nenhum destino configurado, não fingir que o lead foi salvo.
+  if (!db && !target && process.env.NODE_ENV === "production") {
+    console.error("[lead] sem destino: configure o Supabase ou LEAD_WEBHOOK_URL");
+    return NextResponse.json({ ok: false, error: "not_configured" }, { status: 503 });
+  }
+
   let saved = false;
   if (db) {
     const { error } = await db.from("leads").insert({ ...lead, email: lead.email?.toLowerCase() ?? null });
@@ -56,7 +67,6 @@ export async function POST(req: Request) {
     if (error) console.error("[lead] supabase:", error.message);
   }
 
-  const target = process.env.LEAD_WEBHOOK_URL;
   let forwarded = false;
   if (target) {
     try {
@@ -70,6 +80,11 @@ export async function POST(req: Request) {
     } catch {}
   }
 
-  if (!db && !target) console.log("[lead] sem destino configurado:", JSON.stringify(lead));
-  return NextResponse.json({ ok: saved || forwarded || (!db && !target), saved, forwarded });
+  if (!db && !target) {
+    // Só chega aqui fora de produção: registra no log para testar o fluxo localmente.
+    console.log("[lead] sem destino configurado (dev):", JSON.stringify(lead));
+    return NextResponse.json({ ok: true, saved: false, forwarded: false });
+  }
+  const ok = saved || forwarded;
+  return NextResponse.json({ ok, saved, forwarded }, { status: ok ? 200 : 502 });
 }

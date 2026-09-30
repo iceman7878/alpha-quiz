@@ -44,7 +44,7 @@ body::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 body::after {
-  background: radial-gradient(120% 90% at 28% 36%, transparent 55%, rgba(0, 0, 0, 0.42) 100%);
+  background: radial-gradient(120% 90% at 28% 36%, transparent 55%, var(--vignette) 100%);
 }
 
 button,
@@ -200,10 +200,10 @@ a {
   color: var(--ink);
 }
 .btn--primary:hover {
-  background: #f4f0e9;
+  background: var(--osso-hover);
 }
 .btn--primary:active {
-  background: #d8d2c7;
+  background: var(--osso-press);
 }
 .btn--ghost {
   color: var(--text-2);
@@ -244,6 +244,19 @@ a {
 .btn__meta {
   font-weight: var(--w-regular);
   opacity: 0.6;
+  white-space: nowrap;
+}
+/* Telas estreitas: botão de largura total pode quebrar linha em vez de vazar */
+@media (max-width: 479px) {
+  .btn--lg {
+    padding: var(--s-3) var(--s-5);
+  }
+  .btn--block {
+    flex-wrap: wrap;
+    column-gap: var(--s-2);
+    white-space: normal;
+    text-align: center;
+  }
 }
 
 /* ---------- campos: editoriais (linha de base, não caixa) ---------- */
@@ -478,6 +491,12 @@ a {
   background: var(--campo-top);
   box-shadow: inset 0 0 0 2px var(--campo-top), inset 0 0 0 6px var(--osso);
 }
+/* Área de toque de 44px sem mudar o desenho do marco */
+.rail__node > a::after {
+  content: "";
+  position: absolute;
+  inset: -10px;
+}
 .rail__node a:hover i {
   transform: scale(1.3);
 }
@@ -629,6 +648,11 @@ a {
     background-color var(--d-fast) var(--e-out),
     color var(--d-fast) var(--e-out);
 }
+.copy::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+}
 .copy:hover {
   border-color: var(--line-strong);
 }
@@ -653,17 +677,21 @@ a {
   fill: none;
   stroke: var(--osso);
   stroke-width: 0.9;
-  stroke-opacity: 0.16;
-  transition: stroke-opacity var(--d-slow) var(--e-out);
+  stroke-opacity: 0.12;
+  transition:
+    stroke-opacity var(--d-slow) var(--e-out),
+    stroke-width var(--d-slow) var(--e-out);
 }
+/* Rota escolhida manda; as outras ficam como contexto */
 .routemap .is-picked path {
   stroke-opacity: 1;
+  stroke-width: 1.4;
 }
 .routemap text {
   fill: var(--osso);
-  fill-opacity: 0.32;
+  fill-opacity: 0.26;
   font-family: var(--f-body);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.06em;
   transition: fill-opacity var(--d-slow) var(--e-out);
 }
@@ -688,26 +716,27 @@ a {
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
   animation: draw var(--d-slow) var(--e-inout) forwards;
-  animation-delay: calc(var(--i, 0) * 180ms + 200ms);
+  animation-delay: calc(var(--i, 0) * var(--stagger-lg) + var(--delay-in));
 }
 .routemap--draw g:not(.is-picked) text,
 .routemap--draw g:not(.is-picked) rect {
   opacity: 0;
   animation: rise var(--d-base) var(--e-out) forwards;
-  animation-delay: calc(var(--i, 0) * 180ms + 600ms);
+  animation-delay: calc(var(--i, 0) * var(--stagger-lg) + var(--d-slow));
 }
 .routemap--draw .is-picked path {
-  stroke-opacity: 0.16;
+  stroke-opacity: 0.12;
+  stroke-width: 0.9;
   animation:
     draw var(--d-slow) var(--e-inout) forwards,
     pick var(--d-slow) var(--e-out) forwards;
-  animation-delay: calc(var(--i, 0) * 180ms + 200ms), 1500ms;
+  animation-delay: calc(var(--i, 0) * var(--stagger-lg) + var(--delay-in)), var(--route-pick);
 }
 .routemap--draw .is-picked text,
 .routemap--draw .is-picked rect {
   opacity: 0;
   animation: rise var(--d-base) var(--e-out) forwards;
-  animation-delay: 1500ms;
+  animation-delay: var(--route-pick);
 }
 
 /* ---------- estado de salvamento ---------- */
@@ -746,6 +775,23 @@ a {
 .savestate span {
   animation: rise var(--d-base) var(--e-out) both;
 }
+.savestate__go {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--d-fast) var(--e-out);
+}
+.savestate__go:hover {
+  color: var(--text);
+}
+.savestate__go:active {
+  color: var(--text-3);
+}
 
 /* ---------- revelação e motion ---------- */
 
@@ -770,7 +816,7 @@ a {
 .mask > span {
   display: block;
   animation: mask-up var(--d-slow) var(--e-out) both;
-  animation-delay: calc(var(--i, 0) * 90ms + 80ms);
+  animation-delay: calc(var(--i, 0) * var(--stagger-lg) + var(--stagger));
 }
 .enter {
   animation: rise var(--d-base) var(--e-out) both;
@@ -803,6 +849,7 @@ a {
 @keyframes pick {
   to {
     stroke-opacity: 1;
+    stroke-width: 1.4;
   }
 }
 @keyframes pulse {
@@ -827,7 +874,7 @@ a {
   animation-timing-function: var(--e-out);
 }
 ::view-transition-old(screen) {
-  animation: vt-out 180ms var(--e-out) both;
+  animation: vt-out var(--d-exit) var(--e-out) both;
 }
 ::view-transition-new(screen) {
   animation: vt-in var(--d-base) var(--e-out) both;

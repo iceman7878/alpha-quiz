@@ -27,6 +27,10 @@
   --surface-2: rgba(233, 228, 219, 0.028); /* elevação 2: área de trabalho */
   --surface-3: rgba(233, 228, 219, 0.05); /* elevação 3: selecionado */
   --ink: var(--campo-top); /* texto sobre osso */
+  --osso-hover: #f4f0e9; /* botão primário: hover */
+  --osso-press: #d8d2c7; /* botão primário: pressionado */
+  --bar-bg: rgba(8, 8, 10, 0.96); /* barras fixas: opacas, sem vidro */
+  --vignette: rgba(0, 0, 0, 0.42);
 
   /* ---------- tipografia ---------- */
   --f-wordmark: var(--font-jura), "Jura", sans-serif;
@@ -88,7 +92,11 @@
   --d-slow: 640ms; /* narrativa: rail, rota, revelação */
   --e-out: cubic-bezier(0.22, 1, 0.36, 1);
   --e-inout: cubic-bezier(0.65, 0, 0.35, 1);
-  --stagger: 60ms;
+  --stagger: 60ms; /* entre itens de uma lista */
+  --stagger-lg: 120ms; /* entre linhas de título, rotas do mapa, níveis */
+  --d-exit: 180ms; /* saída de tela: mais curta que a entrada */
+  --delay-in: 200ms; /* respiro antes de uma sequência começar */
+  --route-pick: 1100ms; /* mapa de rotas: quando a rota escolhida acende */
   --lift: 10px; /* deslocamento de entrada, único para o produto todo */
 
   /* ---------- camadas ---------- */
@@ -104,6 +112,10 @@
     --d-base: 0ms;
     --d-slow: 0ms;
     --stagger: 0ms;
+    --stagger-lg: 0ms;
+    --d-exit: 0ms;
+    --delay-in: 0ms;
+    --route-pick: 0ms;
     --lift: 0px;
   }
 }

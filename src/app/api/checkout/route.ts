@@ -3,6 +3,15 @@
 //   https://<dominio>/api/checkout?token=<CHECKOUT_WEBHOOK_SECRET>
 // A plataforma ainda não foi definida: `normalize` procura os campos nos formatos mais comuns.
 // Ao escolher a plataforma, conferir com um evento de teste.
+//
+// PROVISÓRIO: o token na URL/header é um segredo compartilhado simples. Quando a plataforma
+// for escolhida, trocar por:
+//   1. assinatura oficial do webhook (HMAC do corpo bruto com o segredo do provider, via header
+//      próprio dele) — ler o corpo com req.text() antes do JSON.parse para validar;
+//   2. validação específica do provider (formato do payload, status e produto esperados);
+//   3. idempotência: guardar o id da transação/evento e ignorar repetições (providers reenviam).
+// Enquanto isso, reenvios do mesmo evento são inofensivos: o convite não se repete para quem
+// já existe e o membro é gravado com upsert pelo id do usuário.
 
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";

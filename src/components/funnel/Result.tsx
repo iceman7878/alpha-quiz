@@ -272,7 +272,7 @@ export function Result(props: { route: Route; answers: number[]; lead: Lead | nu
       <div className={`buybar${showBar ? " is-on" : ""}`} aria-hidden={!showBar}>
         <div className="buybar__inner wrap">
           <span className="buybar__txt">
-            {OFFER.name} <span className="num">{OFFER.priceLabel}</span>
+            <span className="buybar__name">{OFFER.name}</span> <span className="num">{OFFER.priceLabel}</span>
           </span>
           <a className="btn btn--primary" href={props.checkoutHref} onClick={onCheckout} tabIndex={showBar ? 0 : -1}>
             Começar <Arrow />

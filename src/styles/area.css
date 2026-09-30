@@ -6,6 +6,7 @@
 
 .auth {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   min-height: 100dvh;
 }
 .auth__side {
@@ -44,7 +45,7 @@
 }
 @media (min-width: 1080px) {
   .auth {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
   .auth__side {
     justify-content: space-between;
@@ -80,9 +81,7 @@
   gap: var(--s-5);
   min-height: 68px;
   padding-top: env(safe-area-inset-top);
-  background: linear-gradient(180deg, rgba(8, 8, 10, 0.94) 60%, rgba(8, 8, 10, 0));
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: linear-gradient(180deg, var(--bar-bg) 70%, transparent);
 }
 .area__mark {
   font-size: 15px;
@@ -596,10 +595,8 @@ details[open] > summary .tool__sign::after {
   bottom: 0;
   z-index: var(--z-bar);
   border-top: var(--bw) solid var(--line);
-  background: rgba(8, 8, 10, 0.92);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  animation: bar-in var(--d-base) var(--e-out) both 200ms;
+  background: var(--bar-bg);
+  animation: bar-in var(--d-base) var(--e-out) both var(--delay-in);
 }
 @keyframes bar-in {
   from {
@@ -769,7 +766,7 @@ details[open] > summary .tool__sign::after {
 }
 .meter7__cells li.is-on .meter7__bar::after {
   animation: fill-y var(--d-slow) var(--e-out) forwards;
-  animation-delay: calc(var(--i, 0) * 90ms + 500ms);
+  animation-delay: calc(var(--i, 0) * var(--stagger-lg) + var(--d-base));
 }
 @keyframes fill-y {
   to {
