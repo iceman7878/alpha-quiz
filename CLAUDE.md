@@ -25,7 +25,7 @@ DAY 01 FIND (direção) · DAY 02 PROBLEM (problema) · DAY 03 OFFER (oferta) ·
 
 ## Entregáveis
 1. **Quiz** (mobile-first, Next.js), deploy na Vercel (confirmar com o Victor antes), Meta Pixel + captura de UTM + captura de lead (`/api/lead` → `LEAD_WEBHOOK_URL`) — FEITO
-2. **App web ALPHA LAUNCH** (o veículo): área logada com a rota personalizada, 7-Day Build em checklist com entregáveis e progresso, 7 módulos curtos em texto, templates essenciais com botão de copiar, Build Score, CTA de mentoria. Preparado para vídeos depois
+2. **App web ALPHA LAUNCH** (o veículo): área logada com a rota personalizada, 7-Day Build em checklist com entregáveis e progresso, 7 módulos curtos em texto, templates essenciais com botão de copiar, Build Score, CTA de mentoria. Preparado para vídeos depois — FEITO (`/build`, Supabase mínimo: leads, members, progress)
 3. **Roteiro ManyChat**: palavra BUILD, mensagens, tags, lembrete para quem não concluiu o quiz (o Victor monta na conta dele)
 4. **Copy de divulgação**: 5 roteiros de reels "comenta BUILD", bio, story fixado
 

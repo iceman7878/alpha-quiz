@@ -23,3 +23,6 @@ export const OFFER = {
   price: 67.97,
   priceLabel: "R$ 67,97",
 };
+
+/** Link da aplicação para a ALPHA Mentorship (formulário, WhatsApp…). Vazio = botão não aparece. */
+export const MENTORSHIP_URL = process.env.NEXT_PUBLIC_MENTORSHIP_URL || "";
