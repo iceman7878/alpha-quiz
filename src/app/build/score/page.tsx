@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { AreaFallback, Shell, useArea } from "@/components/area";
 import { MENTORSHIP_URL } from "@/config";
-import { DAYS, LEVELS, SCORE_QUESTIONS, computeLevel, type Level } from "@/lib/build";
+import { LEVELS, SCORE_QUESTIONS, computeLevel, type Level } from "@/lib/build";
 import { saveScore } from "@/lib/store";
 
 const BUILT = ["direção", "problema", "oferta", "MVP definido", "posicionamento", "distribuição", "oferta no mercado"];
@@ -18,7 +18,7 @@ export default function ScorePage() {
   if (state.status !== "ready") return <AreaFallback state={state} />;
 
   const answered = yes.every((v) => v !== null);
-  const pendingDay = DAYS.find((d) => !state.progress[d.n]?.completed);
+  const pendingDay = state.content.days.find((d) => !state.progress[d.n]?.completed);
 
   async function submit() {
     const bools = yes.map(Boolean);

@@ -1,26 +1,30 @@
-// Camada de dados do app. Com Supabase configurado usa Auth + tabelas `members` e `progress`;
-// sem as variáveis, roda em modo demonstração (tudo no navegador) para prévia e testes.
+// Camada de dados do app: Supabase Auth + tabelas `members` e `progress`.
+// Modo demonstração (tudo no navegador) só em desenvolvimento ou com NEXT_PUBLIC_DEMO=1.
+// Em produção sem Supabase: "misconfigured" — nada do produto é aberto.
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { decodeAnswers, scoreAnswers, type RouteKey } from "./quiz";
-import type { Answers, Level } from "./build";
+import type { Answers, BuildContent, Level } from "./build";
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const DEMO_ALLOWED = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_DEMO === "1";
+
+export type Mode = "supabase" | "demo" | "misconfigured";
+export const mode: Mode = URL && ANON ? "supabase" : DEMO_ALLOWED ? "demo" : "misconfigured";
+export const isDemo = () => mode === "demo";
 
 let client: SupabaseClient | null = null;
 function sb(): SupabaseClient | null {
-  if (!URL || !ANON) return null;
+  if (mode !== "supabase") return null;
   if (!client) client = createClient(URL, ANON);
   return client;
 }
 
-export const isDemo = () => !sb();
-
 export type Member = {
   email: string;
   nome: string | null;
-  rota: RouteKey | null;
+  route: RouteKey | null;
   active: boolean;
   score: number | null;
   level: Level | null;
@@ -46,13 +50,13 @@ function demoWrite(s: DemoState) {
 }
 
 /** Rota salva pelo quiz neste navegador (fallback quando o membro não tem rota registrada). */
-function quizRoute(): { rota: RouteKey | null; nome: string | null } {
+function quizRoute(): { route: RouteKey | null; nome: string | null } {
   try {
     const s = JSON.parse(localStorage.getItem("alpha_quiz") || "null");
     const a = s && decodeAnswers(s.r);
-    return { rota: a ? scoreAnswers(a) : null, nome: s?.lead?.nome ?? null };
+    return { route: a ? scoreAnswers(a) : null, nome: s?.lead?.nome ?? null };
   } catch {
-    return { rota: null, nome: null };
+    return { route: null, nome: null };
   }
 }
 
@@ -60,12 +64,13 @@ function quizRoute(): { rota: RouteKey | null; nome: string | null } {
 
 export async function currentEmail(): Promise<string | null> {
   const c = sb();
-  if (!c) return demoRead().logged ? "demo@alpha" : null;
+  if (!c) return mode === "demo" && demoRead().logged ? "demo@alpha" : null;
   const { data } = await c.auth.getSession();
   return data.session?.user.email ?? null;
 }
 
 export async function signIn(email: string, password: string): Promise<string | null> {
+  if (mode === "misconfigured") return "Área de membros em configuração. Tente novamente em instantes.";
   const c = sb();
   if (!c) {
     demoWrite({ ...demoRead(), logged: true });
@@ -76,6 +81,7 @@ export async function signIn(email: string, password: string): Promise<string | 
 }
 
 export async function signOut() {
+  contentCache = null;
   const c = sb();
   if (!c) return demoWrite({ ...demoRead(), logged: false });
   await c.auth.signOut();
@@ -100,32 +106,60 @@ export async function setPassword(password: string): Promise<string | null> {
   return error ? "Não foi possível salvar a senha. Use pelo menos 8 caracteres." : null;
 }
 
+// ---------- conteúdo (protegido) ----------
+
+let contentCache: BuildContent | null = null;
+
+/** Conteúdo dos 7 dias: só chega depois de sessão válida + acesso ativo. Uma busca por sessão. */
+export async function loadContent(): Promise<BuildContent | null> {
+  if (contentCache) return contentCache;
+  const headers: Record<string, string> = {};
+  const c = sb();
+  if (c) {
+    const { data } = await c.auth.getSession();
+    if (!data.session) return null;
+    headers.authorization = `Bearer ${data.session.access_token}`;
+  }
+  const res = await fetch("/api/build/content", { headers, cache: "no-store" });
+  if (!res.ok) return null;
+  contentCache = (await res.json()) as BuildContent;
+  return contentCache;
+}
+
 // ---------- dados ----------
 
 export async function loadMember(): Promise<Member | null> {
-  const c = sb();
   const local = quizRoute();
+  const c = sb();
   if (!c) {
+    if (mode !== "demo") return null;
     const d = demoRead();
-    return { email: "demo@alpha", nome: local.nome, rota: local.rota ?? "servico", active: true, score: d.score, level: d.level };
+    return { email: "demo@alpha", nome: local.nome, route: local.route ?? "servico", active: true, score: d.score, level: d.level };
   }
-  const email = await currentEmail();
-  if (!email) return null;
+  const { data: u } = await c.auth.getUser();
+  if (!u.user) return null;
   const { data } = await c
     .from("members")
-    .select("email, nome, rota, active, score, level")
-    .eq("email", email.toLowerCase())
+    .select("email, nome, route, access_status, score, level")
+    .eq("id", u.user.id)
     .maybeSingle();
   if (!data) return null;
-  return { ...(data as Member), rota: (data.rota as RouteKey | null) ?? local.rota };
+  return {
+    email: data.email,
+    nome: data.nome,
+    route: (data.route as RouteKey | null) ?? local.route,
+    active: data.access_status === "active",
+    score: data.score,
+    level: data.level as Level | null,
+  };
 }
 
 export async function loadProgress(): Promise<Progress> {
   const c = sb();
   if (!c) return demoRead().progress;
-  const { data } = await c.from("progress").select("day, answers, completed_at");
+  const { data } = await c.from("progress").select("day, answers, completed");
   const out: Progress = {};
-  for (const row of data ?? []) out[row.day] = { answers: row.answers ?? {}, completed: !!row.completed_at };
+  for (const row of data ?? []) out[row.day] = { answers: row.answers ?? {}, completed: !!row.completed };
   return out;
 }
 
@@ -138,14 +172,9 @@ export async function saveDay(day: number, answers: Answers, completed: boolean)
   }
   const { data: u } = await c.auth.getUser();
   if (!u.user) return "Sessão expirada. Entre de novo.";
-  const now = new Date().toISOString();
-  const { error } = await c.from("progress").upsert({
-    user_id: u.user.id,
-    day,
-    answers,
-    completed_at: completed ? now : null,
-    updated_at: now,
-  });
+  const { error } = await c
+    .from("progress")
+    .upsert({ user_id: u.user.id, day, answers, completed }, { onConflict: "user_id,day" });
   return error ? "Não foi possível salvar. Verifique a conexão." : null;
 }
 
@@ -155,11 +184,11 @@ export async function saveScore(score: number, level: Level, yes: boolean[]): Pr
     demoWrite({ ...demoRead(), score, level });
     return null;
   }
-  const email = await currentEmail();
-  if (!email) return "Sessão expirada. Entre de novo.";
+  const { data: u } = await c.auth.getUser();
+  if (!u.user) return "Sessão expirada. Entre de novo.";
   const { error } = await c
     .from("members")
     .update({ score, level, score_answers: yes, score_at: new Date().toISOString() })
-    .eq("email", email.toLowerCase());
+    .eq("id", u.user.id);
   return error ? "Não foi possível salvar o Build Score." : null;
 }

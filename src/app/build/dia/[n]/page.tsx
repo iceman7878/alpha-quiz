@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AreaFallback, CopyButton, Shell, useArea } from "@/components/area";
-import { DAY01_EXAMPLES, DAYS, type Answers } from "@/lib/build";
+import { renderOutput, type Answers, type Day } from "@/lib/build";
 import { ROUTES } from "@/lib/quiz";
 import { saveDay } from "@/lib/store";
 
@@ -13,9 +13,8 @@ export default function DayPage() {
   const { state } = useArea();
   const params = useParams<{ n: string }>();
   const n = Number(params.n);
-  const day = DAYS.find((d) => d.n === n);
-
   if (state.status !== "ready") return <AreaFallback state={state} />;
+  const day = state.content.days.find((d) => d.n === n);
   if (!day) {
     return (
       <Shell back={{ href: "/build", label: "Seu build" }}>
@@ -27,17 +26,18 @@ export default function DayPage() {
   return (
     <DayView
       key={n}
-      n={n}
+      day={day}
+      example={state.member.route ? state.content.day01Examples[state.member.route] : undefined}
       initial={saved?.answers ?? {}}
       initiallyDone={!!saved?.completed}
-      route={state.member.rota}
+      route={state.member.route}
     />
   );
 }
 
-function DayView(props: { n: number; initial: Answers; initiallyDone: boolean; route: keyof typeof ROUTES | null }) {
+function DayView(props: { day: Day; example?: string; initial: Answers; initiallyDone: boolean; route: keyof typeof ROUTES | null }) {
   const router = useRouter();
-  const day = DAYS.find((d) => d.n === props.n)!;
+  const day = props.day;
   const [answers, setAnswers] = useState<Answers>(props.initial);
   const [done, setDone] = useState(props.initiallyDone);
   const [status, setStatus] = useState<"" | "saving" | "saved" | string>("");
@@ -63,7 +63,7 @@ function DayView(props: { n: number; initial: Answers; initiallyDone: boolean; r
   }
 
   const filled = day.fields.filter((f) => (answers[f.id] || "").trim()).length;
-  const output = day.finalize(answers, props.route ?? "servico");
+  const output = renderOutput(day.finalize, answers);
 
   async function complete() {
     window.clearTimeout(timer.current);
@@ -108,7 +108,7 @@ function DayView(props: { n: number; initial: Answers; initiallyDone: boolean; r
         <h2 className="day__step">02 · Faça</h2>
         <div className="form day__form">
           {day.fields.map((f) => {
-            const hint = day.n === 1 && f.id === "direcao" && props.route ? DAY01_EXAMPLES[props.route] : f.hint;
+            const hint = day.n === 1 && f.id === "direcao" && props.example ? props.example : f.hint;
             return (
               <label className="input" key={f.id}>
                 <span>{f.label}</span>

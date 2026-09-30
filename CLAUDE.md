@@ -24,8 +24,8 @@ DAY 01 FIND (direção) · DAY 02 PROBLEM (problema) · DAY 03 OFFER (oferta) ·
 **BUILD SCORE** no DAY 07: 7 critérios sim/não (oferta, MVP, página, distribuição, leads, primeira venda, métricas) → BUILD 01 (começou), BUILD 02 (construiu), BUILD 03 (colocou no mercado). É dado de CRM para segmentar, não catraca: BUILD 03 recebe CTA direto para aplicar à ALPHA Mentorship; os demais entram em sequências diferentes. Tela final "BUILD COMPLETE" → [Aplicar para a ALPHA].
 
 ## Entregáveis
-1. **Quiz** (mobile-first, Next.js), deploy na Vercel (confirmar com o Victor antes), Meta Pixel + captura de UTM + captura de lead (`/api/lead` → `LEAD_WEBHOOK_URL`) — FEITO
-2. **App web ALPHA LAUNCH** (o veículo): área logada com a rota personalizada, 7-Day Build em checklist com entregáveis e progresso, 7 módulos curtos em texto, templates essenciais com botão de copiar, Build Score, CTA de mentoria. Preparado para vídeos depois — FEITO (`/build`, Supabase mínimo: leads, members, progress)
+1. **Quiz** (mobile-first, Next.js), deploy na Vercel (confirmar com o Victor antes), Meta Pixel + captura de UTM + captura de lead (`/api/lead` → tabela `leads`) — FEITO
+2. **App web ALPHA LAUNCH** (o veículo): área logada com a rota personalizada, 7-Day Build em checklist com entregáveis e progresso, 7 módulos curtos em texto, templates essenciais com botão de copiar, Build Score, CTA de mentoria. Preparado para vídeos depois — FEITO (`/build`; Supabase mínimo: leads, members com access_status, progress; conteúdo servido só após login + acesso ativo)
 3. **Roteiro ManyChat**: palavra BUILD, mensagens, tags, lembrete para quem não concluiu o quiz (o Victor monta na conta dele)
 4. **Copy de divulgação**: 5 roteiros de reels "comenta BUILD", bio, story fixado
 

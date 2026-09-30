@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { currentEmail, isDemo, loadMember, loadProgress, signOut, type Member, type Progress } from "@/lib/store";
+import type { BuildContent } from "@/lib/build";
+import { currentEmail, isDemo, loadContent, loadMember, loadProgress, mode, signOut, type Member, type Progress } from "@/lib/store";
 
 type AreaState =
   | { status: "loading" }
   | { status: "noaccess" }
-  | { status: "ready"; member: Member; progress: Progress };
+  | { status: "misconfigured" }
+  | { status: "ready"; member: Member; progress: Progress; content: BuildContent };
 
 /** Guarda da área de membros: sem sessão → /entrar; sem compra ativa → aviso. */
 export function useArea() {
@@ -16,6 +18,10 @@ export function useArea() {
   const [state, setState] = useState<AreaState>({ status: "loading" });
 
   const reload = useCallback(async () => {
+    if (mode === "misconfigured") {
+      setState({ status: "misconfigured" });
+      return;
+    }
     const email = await currentEmail();
     if (!email) {
       router.replace("/entrar");
@@ -26,7 +32,12 @@ export function useArea() {
       setState({ status: "noaccess" });
       return;
     }
-    setState({ status: "ready", member, progress: await loadProgress() });
+    const [progress, content] = await Promise.all([loadProgress(), loadContent()]);
+    if (!content) {
+      setState({ status: "noaccess" });
+      return;
+    }
+    setState({ status: "ready", member, progress, content });
   }, [router]);
 
   useEffect(() => {
@@ -65,6 +76,16 @@ export function Shell({ children, back }: { children: React.ReactNode; back?: { 
 }
 
 export function AreaFallback({ state }: { state: AreaState }) {
+  if (state.status === "misconfigured") {
+    return (
+      <main className="area">
+        <div className="area__body area__center">
+          <h1 className="area__title">Área em configuração.</h1>
+          <p className="lead">Estamos finalizando a área de membros. Tente novamente em alguns minutos.</p>
+        </div>
+      </main>
+    );
+  }
   if (state.status === "noaccess") {
     return (
       <main className="area">

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AreaFallback, Shell, useArea } from "@/components/area";
-import { DAYS, LEVELS } from "@/lib/build";
+import { LEVELS } from "@/lib/build";
 import { ROUTES } from "@/lib/quiz";
 
 export default function BuildHome() {
@@ -10,9 +10,10 @@ export default function BuildHome() {
   if (state.status !== "ready") return <AreaFallback state={state} />;
 
   const { member, progress } = state;
+  const DAYS = state.content.days;
   const done = DAYS.filter((d) => progress[d.n]?.completed).length;
   const next = DAYS.find((d) => !progress[d.n]?.completed);
-  const route = member.rota ? ROUTES[member.rota] : null;
+  const route = member.route ? ROUTES[member.route] : null;
 
   return (
     <Shell>
