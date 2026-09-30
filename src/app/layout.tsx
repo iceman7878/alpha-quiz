@@ -9,8 +9,8 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 const geistMono = Geist_Mono({ subsets: ["latin"], weight: "400", variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Mapa de Distribuição — ALPHA",
-  description: "7 perguntas para descobrir o modelo de negócio digital que encaixa na sua realidade.",
+  title: "ALPHA LAUNCH — sua rota",
+  description: "3 perguntas para montar a sua rota de construção do primeiro ativo digital.",
   robots: { index: false },
 };
 

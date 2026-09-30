@@ -1,10 +1,11 @@
-// Perguntas, perfis e pontuação do quiz. O app do produto reaproveita este arquivo.
+// Perguntas, rotas e pontuação do quiz. O app do produto reaproveita este arquivo.
 
-export type ProfileKey = "afiliacao" | "coproducao" | "produto" | "servico";
+export type RouteKey = "distribuicao" | "bastidor" | "servico" | "produto";
 
-type Weights = Partial<Record<ProfileKey, number>>;
+type Weights = Partial<Record<RouteKey, number>>;
 
-export type Option = { label: string; w: Weights };
+/** `trait` entra na frase personalizada do resultado ("Você parte de …"). */
+export type Option = { label: string; trait: string; w: Weights };
 
 export type Question = {
   id: string;
@@ -15,152 +16,150 @@ export type Question = {
 
 export const QUESTIONS: Question[] = [
   {
-    id: "tempo",
-    title: "Quanto tempo por dia você consegue dedicar, de verdade?",
+    id: "partida",
+    title: "O que você já tem hoje para começar?",
     options: [
-      { label: "Menos de 1 hora", w: { afiliacao: 3, coproducao: 1 } },
-      { label: "Entre 1 e 2 horas", w: { afiliacao: 2, coproducao: 2, servico: 1 } },
-      { label: "Entre 2 e 4 horas", w: { coproducao: 1, produto: 2, servico: 2 } },
-      { label: "Mais de 4 horas", w: { produto: 2, servico: 3 } },
-    ],
-  },
-  {
-    id: "habilidade",
-    title: "Qual é a sua habilidade mais forte hoje?",
-    options: [
-      { label: "Escrever e comunicar ideias", w: { afiliacao: 2, coproducao: 2, produto: 1 } },
-      { label: "Algo técnico: tráfego, design, edição, automação", w: { servico: 3, coproducao: 2 } },
-      { label: "Ensinar um assunto que eu domino", w: { produto: 3, coproducao: 1 } },
-      { label: "Ainda não tenho uma clara", w: { afiliacao: 3 } },
-    ],
-  },
-  {
-    id: "capital",
-    title: "Quanto você pode investir para começar?",
-    hint: "Considere só o que não faz falta no mês.",
-    options: [
-      { label: "Até R$ 200", w: { afiliacao: 2, servico: 2 } },
-      { label: "De R$ 200 a R$ 1.000", w: { afiliacao: 2, coproducao: 2, servico: 1 } },
-      { label: "De R$ 1.000 a R$ 5.000", w: { coproducao: 1, produto: 2 } },
-      { label: "Mais de R$ 5.000", w: { produto: 3, coproducao: 1 } },
+      {
+        label: "Uma habilidade técnica — ou vontade real de dominar IA",
+        trait: "de uma habilidade técnica",
+        w: { servico: 3, bastidor: 1 },
+      },
+      {
+        label: "Um assunto que eu domino e poderia ensinar",
+        trait: "de um assunto que você domina",
+        w: { produto: 3, bastidor: 1 },
+      },
+      {
+        label: "Facilidade para organizar, escrever e vender",
+        trait: "de facilidade para organizar e vender",
+        w: { bastidor: 3, distribuicao: 1 },
+      },
+      {
+        label: "Nada claro ainda — só a decisão de começar",
+        trait: "da decisão de começar",
+        w: { distribuicao: 3 },
+      },
     ],
   },
   {
     id: "exposicao",
-    title: "Aparecer em vídeo faz parte do seu plano?",
+    title: "Aparecer faz parte do seu plano?",
+    hint: "Sem resposta certa. A rota muda de acordo.",
     options: [
-      { label: "Sim, sem problema", w: { produto: 3, servico: 1 } },
-      { label: "Só voz ou texto", w: { afiliacao: 2, coproducao: 1, servico: 1 } },
-      { label: "Prefiro ficar nos bastidores", w: { afiliacao: 2, coproducao: 3, servico: 1 } },
+      { label: "Sim, sem problema", trait: "aceita aparecer", w: { produto: 3, servico: 1 } },
+      {
+        label: "Só voz, texto ou tela",
+        trait: "prefere voz, texto ou tela",
+        w: { distribuicao: 2, servico: 2, bastidor: 1 },
+      },
+      {
+        label: "Prefiro ficar nos bastidores",
+        trait: "prefere os bastidores",
+        w: { bastidor: 3, distribuicao: 2, servico: 1 },
+      },
     ],
   },
   {
-    id: "meta",
-    title: "O que você quer construir nos próximos 6 meses?",
+    id: "ritmo",
+    title: "Qual ritmo é possível para você agora?",
     options: [
-      { label: "Fazer a primeira venda online", w: { afiliacao: 3, servico: 1 } },
-      { label: "Uma renda complementar consistente", w: { servico: 2, afiliacao: 1, coproducao: 1 } },
-      { label: "Uma operação que cresça sem depender só de mim", w: { coproducao: 3, produto: 1 } },
-      { label: "Um ativo próprio, com a minha marca", w: { produto: 3 } },
-    ],
-  },
-  {
-    id: "experiencia",
-    title: "Qual é a sua experiência com vendas online?",
-    options: [
-      { label: "Nenhuma", w: { afiliacao: 2, servico: 1 } },
-      { label: "Já tentei, sem resultado", w: { afiliacao: 1, coproducao: 2, servico: 1 } },
-      { label: "Já vendi algumas vezes", w: { coproducao: 2, produto: 1, servico: 1 } },
-      { label: "Vendo com frequência", w: { produto: 3, coproducao: 1 } },
-    ],
-  },
-  {
-    id: "trava",
-    title: "O que mais te trava hoje?",
-    options: [
-      { label: "Não sei por onde começar", w: { afiliacao: 2, servico: 1 } },
-      { label: "Não sei o que vender", w: { afiliacao: 2, coproducao: 1 } },
-      { label: "Medo de me expor", w: { coproducao: 2, afiliacao: 1 } },
-      { label: "Falta de método e constância", w: { produto: 2, servico: 2 } },
+      {
+        label: "Menos de 1 hora por dia — quero começar pequeno",
+        trait: "menos de 1 hora por dia",
+        w: { distribuicao: 3, bastidor: 1 },
+      },
+      {
+        label: "1 a 2 horas por dia — quero o primeiro cliente logo",
+        trait: "1 a 2 horas por dia",
+        w: { servico: 3, distribuicao: 1 },
+      },
+      {
+        label: "2 horas ou mais — quero algo com o meu nome",
+        trait: "2 horas ou mais por dia",
+        w: { produto: 3, servico: 1 },
+      },
+      {
+        label: "O que for preciso — ao lado de quem já tem público",
+        trait: "disposição para operar ao lado de quem já tem público",
+        w: { bastidor: 3, produto: 1 },
+      },
     ],
   },
 ];
 
-export type Profile = {
-  key: ProfileKey;
+export type Route = {
+  key: RouteKey;
   code: string;
   name: string;
   model: string;
-  summary: string;
-  diagnosis: string[];
-  firstMove: string;
+  statement: string;
+  objective: string[];
+  day01: string;
 };
 
-export const PROFILES: Record<ProfileKey, Profile> = {
-  afiliacao: {
-    key: "afiliacao",
+export const ROUTES: Record<RouteKey, Route> = {
+  servico: {
+    key: "servico",
     code: "01",
-    name: "Distribuidor Silencioso",
-    model: "Afiliação",
-    summary: "Você distribui o que já existe. Sem produto, sem rosto, sem estoque.",
-    diagnosis: [
-      "Seu ponto de partida mais curto não é criar — é distribuir. Produtos validados já existem; o que falta para eles é alcance, e alcance se constrói com constância, não com exposição.",
-      "O risco do seu perfil é pular de oferta em oferta. O Mapa fixa um nicho, um produto e um canal por 14 dias para você medir o que funciona antes de trocar.",
-    ],
-    firstMove: "Escolher um único produto de nicho e um único canal de conteúdo.",
-  },
-  coproducao: {
-    key: "coproducao",
-    code: "02",
-    name: "Arquiteto de Bastidor",
-    model: "Coprodução",
-    summary: "Você constrói a operação por trás de quem já tem audiência.",
-    diagnosis: [
-      "Você não precisa ser a vitrine. Existem especialistas com público e sem estrutura — a sua vantagem está em montar o que eles não montam: oferta, funil, página, rotina de lançamento.",
-      "O risco do seu perfil é oferecer parceria sem prova. O Mapa organiza a abordagem, a proposta e o primeiro projeto-piloto para você entrar com método, não com pedido.",
-    ],
-    firstMove: "Mapear 10 especialistas com audiência e sem produto estruturado.",
+    name: "AI Service Builder",
+    model: "Serviço com IA",
+    statement:
+      "Seu perfil indica começar por uma solução simples para empresas, usando IA para entregar um resultado específico. Você vende execução — escopo fechado, preço claro.",
+    objective: ["Encontrar 1 problema", "criar 1 solução", "colocar 1 oferta na rua"],
+    day01: "Listar 10 tarefas repetitivas que negócios da sua região pagam para alguém resolver.",
   },
   produto: {
     key: "produto",
-    code: "03",
-    name: "Autoridade de Origem",
+    code: "02",
+    name: "Expertise Builder",
     model: "Produto próprio",
-    summary: "Você transforma o que domina em um ativo com o seu nome.",
-    diagnosis: [
-      "Você tem o que a maioria não tem: um assunto que domina e disposição para ser visto. O caminho é empacotar esse conhecimento num produto enxuto e testar a demanda antes de construir algo grande.",
-      "O risco do seu perfil é gastar meses produzindo antes de vender. O Mapa inverte a ordem: validar primeiro, produzir depois.",
-    ],
-    firstMove: "Definir a promessa de um produto enxuto e pré-vender antes de gravar.",
+    statement:
+      "Seu perfil indica transformar o que você domina em um produto enxuto com o seu nome. Validar a demanda primeiro, produzir depois — nada de meses gravando antes da primeira venda.",
+    objective: ["Escolher 1 recorte", "desenhar 1 produto enxuto", "pré-vender antes de produzir"],
+    day01: "Anotar as 10 perguntas que as pessoas mais te fazem sobre o seu assunto.",
   },
-  servico: {
-    key: "servico",
+  bastidor: {
+    key: "bastidor",
+    code: "03",
+    name: "Backstage Builder",
+    model: "Coprodução",
+    statement:
+      "Seu perfil indica construir por trás de quem já tem audiência. Especialistas com público e sem estrutura existem aos montes — você entra com a oferta, o funil e a rotina que eles não montam.",
+    objective: ["Mapear 1 especialista", "estruturar 1 oferta", "propor 1 projeto-piloto"],
+    day01: "Mapear 10 especialistas com audiência e sem produto estruturado.",
+  },
+  distribuicao: {
+    key: "distribuicao",
     code: "04",
-    name: "Operador Técnico",
-    model: "Serviço",
-    summary: "Você vende execução. Caixa primeiro, escala depois.",
-    diagnosis: [
-      "Sua habilidade já tem mercado. O movimento mais direto é vendê-la como serviço para negócios digitais, com escopo fechado e preço claro — o caixa que vem daí financia os próximos passos.",
-      "O risco do seu perfil é virar freelancer sem sistema. O Mapa estrutura oferta, prospecção e entrega para você não depender de indicação.",
-    ],
-    firstMove: "Transformar a sua habilidade em uma oferta de escopo fechado com preço.",
+    name: "Distribution Builder",
+    model: "Distribuição de produtos validados",
+    statement:
+      "Seu perfil indica começar distribuindo o que já existe. Sem produto próprio, sem rosto, sem estoque — o ativo que você constrói é o canal, e canal se constrói com constância.",
+    objective: ["Escolher 1 nicho", "escolher 1 produto", "abrir 1 canal de distribuição"],
+    day01: "Escolher um nicho e três produtos validados nele para comparar.",
   },
 };
 
-const ORDER: ProfileKey[] = ["afiliacao", "coproducao", "servico", "produto"];
+const ORDER: RouteKey[] = ["distribuicao", "bastidor", "servico", "produto"];
 
 /** answers[i] = índice da opção escolhida na pergunta i. */
-export function scoreAnswers(answers: number[]): ProfileKey {
-  const total: Record<ProfileKey, number> = { afiliacao: 0, coproducao: 0, produto: 0, servico: 0 };
+export function scoreAnswers(answers: number[]): RouteKey {
+  const total: Record<RouteKey, number> = { distribuicao: 0, bastidor: 0, servico: 0, produto: 0 };
   answers.forEach((optIdx, qIdx) => {
     const w = QUESTIONS[qIdx]?.options[optIdx]?.w ?? {};
-    for (const k of Object.keys(w) as ProfileKey[]) total[k] += w[k] ?? 0;
+    for (const k of Object.keys(w) as RouteKey[]) total[k] += w[k] ?? 0;
   });
-  // Empate: vence o modelo de menor barreira de entrada (ordem de ORDER).
+  // Empate: vence a rota de menor barreira de entrada (ordem de ORDER).
   return ORDER.reduce((best, k) => (total[k] > total[best] ? k : best), ORDER[0]);
 }
 
-/** Código compacto das respostas (ex.: "1302213") — viaja no checkout e alimenta o app. */
+/** Frase montada com as próprias respostas — o "isso foi feito para mim". */
+export function personalLine(answers: number[]): string {
+  const [a, b, c] = answers.map((opt, q) => QUESTIONS[q].options[opt].trait);
+  return `Você parte ${a}, ${b} e tem ${c}.`;
+}
+
+/** Código compacto das respostas (ex.: "102") — viaja no checkout e alimenta o app. */
 export function encodeAnswers(answers: number[]): string {
   return answers.join("");
 }
@@ -170,3 +169,14 @@ export function decodeAnswers(code: string): number[] | null {
   const arr = code.split("").map(Number);
   return arr.every((v, i) => v < QUESTIONS[i].options.length) ? arr : null;
 }
+
+/** O 7-Day Build: cada dia produz um entregável. Base do app. */
+export const BUILD_DAYS = [
+  { code: "DAY 01", name: "FIND", task: "Escolha sua direção e defina o que você vai construir.", output: "Minha direção" },
+  { code: "DAY 02", name: "PROBLEM", task: "Encontre um problema específico que vale a pena resolver.", output: "O problema que vou resolver" },
+  { code: "DAY 03", name: "OFFER", task: "Transforme o problema em uma oferta clara.", output: "Minha oferta" },
+  { code: "DAY 04", name: "MVP", task: "Defina a menor versão capaz de entregar o resultado prometido.", output: "MVP definido" },
+  { code: "DAY 05", name: "POSITION", task: "Construa seu posicionamento, promessa e mensagem.", output: "Meu posicionamento" },
+  { code: "DAY 06", name: "DISTRIBUTE", task: "Defina como colocar sua oferta diante das pessoas certas.", output: "Meu plano de distribuição" },
+  { code: "DAY 07", name: "LAUNCH", task: "Coloque sua oferta no mercado e comece a executar.", output: "Oferta pronta para o mercado" },
+] as const;

@@ -1,25 +1,33 @@
-# ALPHA Quiz — funil low ticket
+# ALPHA LAUNCH — funil low ticket
 
 Funil de quiz low ticket da ALPHA Enterprises, rodado no Instagram do Victor com automação via ManyChat.
 
-## Oferta
-- Produto: **Mapa de Distribuição** — R$ 27
-- Order bump sugerido: R$ 17 (ex.: "50 roteiros de conteúdo para o seu modelo")
-- Plataforma de checkout: **ainda não definida** — o link de checkout deve ficar em UMA variável de config fácil de trocar
+## Oferta (decidido em 30/09/2026)
+- Produto: **ALPHA LAUNCH — 7-Day Build** — R$ 67,97, pagamento único, sem âncora ("De R$ X") e sem escassez artificial
+- Promessa (controlável): em 7 dias, transformar uma direção em uma oferta digital pronta para colocar no mercado. Nunca prometer SaaS, negócio pronto ou renda
+- Order bump: **ALPHA Content Vault** — R$ 17,97 (hooks, estruturas de reels, CTAs, prompts, ideias de conteúdo). Nada dos templates essenciais do core vai para o bump
+- Sem upsell por enquanto — o mercado decide depois
+- O produto é o 7-Day Build; o app é só o veículo de entrega. Vídeos entram depois, gravados em cima de onde os compradores travarem
+- Plataforma de checkout: **ainda não definida** — link em `NEXT_PUBLIC_CHECKOUT_URL` (`src/config.ts`)
 - Tom: competência, sem promessa de renda, sem escassez artificial, sem linguagem de enriquecimento fácil
 
 ## Fluxo
-1. Reel/story → pessoa comenta `MAPA` → ManyChat manda DM com link do quiz (com UTM + tag)
-2. Quiz: tela de abertura → 7 perguntas (tempo disponível, habilidade, capital, aparecer ou não, meta, experiência, maior trava) → tela "analisando…" → resultado
-3. 4 perfis de resultado (ex.: "Distribuidor Silencioso"), cada um mapeado para um modelo: afiliação, coprodução, produto próprio, serviço
-4. Resultado com diagnóstico curto + oferta → botão para checkout
+1. Reel/TikTok → "Comenta **BUILD**" → ManyChat manda DM ("Antes de te mostrar sua rota, preciso de 3 respostas rápidas") com link do quiz (UTM + tag)
+2. Quiz: abertura → **3 perguntas** (ponto de partida, exposição, ritmo) → "montando sua rota…" → **"Seu plano personalizado está pronto."** + nome, WhatsApp (obrigatório), e-mail (opcional), aceite LGPD → rota
+3. 4 rotas: AI Service Builder (serviço com IA), Expertise Builder (produto próprio), Backstage Builder (coprodução), Distribution Builder (distribuição de produtos validados)
+4. Resultado = página de vendas personalizada (rota + frase montada com as respostas + DAY 01) → checkout
 5. Pós-compra: webhook do checkout libera acesso ao app e envia link de login por e-mail
 
+## 7-Day Build (cada dia gera um entregável)
+DAY 01 FIND (direção) · DAY 02 PROBLEM (problema) · DAY 03 OFFER (oferta) · DAY 04 MVP (menor versão que entrega o resultado — definir, não programar) · DAY 05 POSITION (headline, promessa, mensagem, CTA) · DAY 06 DISTRIBUTE (3 conteúdos, 3 hooks, CTA, canal) · DAY 07 LAUNCH (publicar)
+
+**BUILD SCORE** no DAY 07: 7 critérios sim/não (oferta, MVP, página, distribuição, leads, primeira venda, métricas) → BUILD 01 (começou), BUILD 02 (construiu), BUILD 03 (colocou no mercado). É dado de CRM para segmentar, não catraca: BUILD 03 recebe CTA direto para aplicar à ALPHA Mentorship; os demais entram em sequências diferentes. Tela final "BUILD COMPLETE" → [Aplicar para a ALPHA].
+
 ## Entregáveis
-1. **Quiz** (mobile-first), deploy na Vercel, Meta Pixel + captura de UTM
-2. **App web "Mapa de Distribuição"** (o produto): área logada com diagnóstico personalizado pelas respostas do quiz, plano de 14 dias como checklist interativo com progresso, kit de templates (planilhas, scripts de DM, modelos de conteúdo) com botão de copiar. Preparado para receber vídeos depois.
-3. **Roteiro ManyChat**: mensagens, palavras-chave, tags, lembrete para quem não concluiu o quiz (o Victor monta na conta dele)
-4. **Copy de divulgação**: 5 roteiros de reels "comenta MAPA", bio, story fixado
+1. **Quiz** (mobile-first, Next.js), deploy na Vercel (confirmar com o Victor antes), Meta Pixel + captura de UTM + captura de lead (`/api/lead` → `LEAD_WEBHOOK_URL`) — FEITO
+2. **App web ALPHA LAUNCH** (o veículo): área logada com a rota personalizada, 7-Day Build em checklist com entregáveis e progresso, 7 módulos curtos em texto, templates essenciais com botão de copiar, Build Score, CTA de mentoria. Preparado para vídeos depois
+3. **Roteiro ManyChat**: palavra BUILD, mensagens, tags, lembrete para quem não concluiu o quiz (o Victor monta na conta dele)
+4. **Copy de divulgação**: 5 roteiros de reels "comenta BUILD", bio, story fixado
 
 ## Identidade visual — ALPHA "Campo Silencioso" (obrigatório)
 ```css
