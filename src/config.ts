@@ -7,7 +7,7 @@
  * O order bump (Content Vault, R$ 17,97) é configurado na própria plataforma de checkout.
  */
 export const CHECKOUT_URL =
-  process.env.NEXT_PUBLIC_CHECKOUT_URL || "https://checkout.exemplo.com/alpha-launch";
+  process.env.NEXT_PUBLIC_CHECKOUT_URL || "/checkout-em-breve";
 
 /**
  * Nomes dos parâmetros de pré-preenchimento do checkout (nome, e-mail, telefone).

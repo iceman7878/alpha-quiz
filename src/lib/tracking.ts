@@ -26,7 +26,7 @@ export function captureUtm(): Utm {
 
 /** Monta o link final do checkout com UTMs + perfil + respostas. */
 export function buildCheckoutUrl(base: string, utm: Utm, extra: Record<string, string>): string {
-  const url = new URL(base);
+  const url = new URL(base, window.location.origin);
   for (const [k, v] of Object.entries(utm)) if (v) url.searchParams.set(k, v);
   for (const [k, v] of Object.entries(extra)) url.searchParams.set(k, v);
   return url.toString();
