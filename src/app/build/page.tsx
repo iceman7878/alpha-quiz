@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { AreaFallback, DayRail, Shell, useArea } from "@/components/area";
+import { AreaFallback, BuildStack, DayRail, Shell, useArea } from "@/components/area";
 import { Arrow, Tick } from "@/components/ui";
 import { LEVELS } from "@/lib/build";
 import { ROUTES } from "@/lib/quiz";
@@ -22,7 +22,7 @@ export default function BuildHome() {
     <Shell>
       <section className="home__head">
         <div>
-          <span className="micro enter">YOUR BUILD</span>
+          <span className="micro enter">7-DAY BUILD</span>
           <h1 className="h1 home__title enter" style={{ "--i": 1 } as CSSProperties}>
             {member.nome ? `${member.nome}, seu 7-Day Build.` : "Seu 7-Day Build."}
           </h1>
@@ -120,6 +120,8 @@ export default function BuildHome() {
         </span>
         <span aria-hidden>→</span>
       </Link>
+
+      <BuildStack days={days} progress={progress} />
     </Shell>
   );
 }

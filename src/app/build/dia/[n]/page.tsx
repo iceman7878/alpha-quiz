@@ -10,6 +10,11 @@ import { ROUTES, type RouteKey } from "@/lib/quiz";
 import { saveDay, type Progress } from "@/lib/store";
 
 const AUTOSAVE_MS = 1200;
+// Commit: barra mínima (= --d-slow) enquanto o save real roda, depois COMMITTED e o próximo dia. ~1.1s no total.
+const COMMIT_MIN_MS = 640;
+const COMMITTED_MS = 220;
+const NEXT_MS = 240;
+const wait = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
 
 export default function DayPage() {
   const { state } = useArea();
@@ -30,6 +35,7 @@ export default function DayPage() {
       key={n}
       day={day}
       total={state.content.days.length}
+      nextName={state.content.days.find((d) => d.n === n + 1)?.name}
       progress={state.progress}
       example={state.member.route ? state.content.day01Examples[state.member.route] : undefined}
       initial={saved?.answers ?? {}}
@@ -40,10 +46,12 @@ export default function DayPage() {
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
+type CommitPhase = "idle" | "committing" | "committed" | "next" | "error";
 
 function DayView(props: {
   day: Day;
   total: number;
+  nextName?: string;
   progress: Progress;
   example?: string;
   initial: Answers;
@@ -55,7 +63,7 @@ function DayView(props: {
   const [answers, setAnswers] = useState<Answers>(props.initial);
   const [done, setDone] = useState(props.initiallyDone);
   const [save, setSave] = useState<{ state: SaveState; msg?: string }>({ state: "idle" });
-  const [completing, setCompleting] = useState(false);
+  const [commit, setCommit] = useState<CommitPhase>("idle");
   const dirty = useRef(false);
   const timer = useRef<number | undefined>(undefined);
 
@@ -74,6 +82,7 @@ function DayView(props: {
 
   function update(id: string, value: string) {
     dirty.current = true;
+    if (commit === "error") setCommit("idle");
     setAnswers((a) => ({ ...a, [id]: value }));
   }
 
@@ -82,17 +91,26 @@ function DayView(props: {
   const output = renderOutput(day.finalize, answers);
   const progress = { ...props.progress, [day.n]: { answers, completed: done } };
 
+  // COMMIT BUILD: só mostra COMMITTED depois do save real; erro volta para a barra com "tentar de novo".
   async function finish() {
     window.clearTimeout(timer.current);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setCommit("committing");
     setSave({ state: "saving" });
-    const err = await saveDay(day.n, answers, true);
-    if (err) return setSave({ state: "error", msg: err });
+    const saving = saveDay(day.n, answers, true).catch(() => "Não foi possível salvar. Tente de novo.");
+    const [err] = await Promise.all([saving, wait(reduced ? 0 : COMMIT_MIN_MS)]);
+    if (err) {
+      setCommit("error");
+      return setSave({ state: "error", msg: err });
+    }
     dirty.current = false;
     setDone(true);
     setSave({ state: "saved" });
-    setCompleting(true);
-    // Um instante para o "concluído" ser visto — depois, o próximo dia.
-    window.setTimeout(() => router.push(day.n < props.total ? `/build/dia/${day.n + 1}` : "/build/score"), 520);
+    setCommit("committed");
+    await wait(reduced ? 400 : COMMITTED_MS);
+    setCommit("next");
+    await wait(reduced ? 400 : NEXT_MS);
+    router.push(day.n < props.total ? `/build/dia/${day.n + 1}` : "/build/score");
   }
 
   async function saveNow() {
@@ -268,43 +286,55 @@ function DayView(props: {
       {/* Barra de ação: sempre à mão, com o estado de salvamento */}
       <div className="actionbar">
         <div className="actionbar__inner wrap">
-          <span className="savestate" data-state={save.state} aria-live="polite">
-            <span key={save.state}>
-              {save.state === "saving"
-                ? "Salvando…"
-                : save.state === "saved"
-                  ? "Salvo"
-                  : save.state === "error"
-                    ? save.msg
-                    : hasWork || filled
-                      ? "Salvamento automático"
-                      : (
-                          <button className="savestate__go" onClick={goToFirstField}>
-                            Ir ao exercício ↓
-                          </button>
-                        )}
-            </span>
-          </span>
-          <div className="actionbar__btns">
-            <button className="btn btn--ghost actionbar__save" onClick={saveNow}>
-              Salvar
-            </button>
-            <button
-              className={`btn btn--primary actionbar__done${completing ? " is-done" : ""}`}
-              onClick={finish}
-              disabled={filled === 0 || completing}
-            >
-              {completing ? (
-                <>
-                  <Tick className="actionbar__tick" /> {day.code} concluído
-                </>
-              ) : (
-                <>
-                  Concluir {day.code} <Arrow />
-                </>
-              )}
-            </button>
-          </div>
+          {commit === "committing" || commit === "committed" || commit === "next" ? (
+            <div className="commit" data-phase={commit} role="status" aria-live="polite">
+              <span className="commit__bar" aria-hidden>
+                <i />
+              </span>
+              <span className="commit__state">
+                <span key={commit}>
+                  {commit === "committing"
+                    ? "Committing…"
+                    : commit === "committed"
+                      ? "Committed"
+                      : day.n < props.total
+                        ? `DAY 0${day.n + 1} → ${props.nextName ?? ""}`
+                        : "Build Score →"}
+                </span>
+              </span>
+              <span className="commit__day">
+                {day.code} · {day.name}
+              </span>
+            </div>
+          ) : (
+            <>
+              <span className="savestate" data-state={save.state} aria-live="polite">
+                <span key={save.state}>
+                  {save.state === "saving"
+                    ? "Salvando…"
+                    : save.state === "saved"
+                      ? "Salvo"
+                      : save.state === "error"
+                        ? save.msg
+                        : hasWork || filled
+                          ? "Salvamento automático"
+                          : (
+                              <button className="savestate__go" onClick={goToFirstField}>
+                                Ir ao exercício ↓
+                              </button>
+                            )}
+                </span>
+              </span>
+              <div className="actionbar__btns">
+                <button className="btn btn--ghost actionbar__save" onClick={saveNow}>
+                  Salvar
+                </button>
+                <button className="btn btn--primary actionbar__done" onClick={finish} disabled={filled === 0}>
+                  {commit === "error" ? "Tentar de novo" : `Concluir ${day.code}`} <Arrow />
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </Shell>

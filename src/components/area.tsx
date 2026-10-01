@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import type { BuildContent } from "@/lib/build";
+import { renderOutput, type BuildContent, type Day } from "@/lib/build";
 import { currentEmail, isDemo, loadContent, loadMember, loadProgress, mode, signOut, type Member, type Progress } from "@/lib/store";
-import { Rail } from "./ui";
+import { CopyButton, Rail, Tick } from "./ui";
 
 export { CopyButton } from "./ui";
 
@@ -183,5 +183,61 @@ export function AuthFrame(props: { title: string; lead?: string; children: React
         </div>
       </section>
     </main>
+  );
+}
+
+/** Nome de etapa de cada entregável no stack (o dia é a ação; o stack mostra o que ela gerou). */
+const STAGE: Record<number, string> = {
+  1: "DIRECTION",
+  2: "PROBLEM",
+  3: "OFFER",
+  4: "MVP",
+  5: "POSITION",
+  6: "DISTRIBUTION",
+  7: "LAUNCH",
+};
+
+/** YOUR BUILD: os artefatos já concluídos, empilhados — mesmo texto do "03 · Finalize" (renderOutput). */
+export function BuildStack(props: { days: Day[]; progress: Progress; className?: string }) {
+  const done = props.days.filter((d) => props.progress[d.n]?.completed).length;
+  return (
+    <section className={`stack ${props.className ?? ""}`} aria-labelledby="stack-title">
+      <header className="stack__head">
+        <span className="label" id="stack-title">
+          Your build
+        </span>
+        <span className="stack__count num">{done}/{props.days.length}</span>
+      </header>
+      {done === 0 && <p className="stack__empty">Cada dia concluído deixa um entregável aqui.</p>}
+      <ol className="stack__list">
+        {props.days.map((d) => {
+          const p = props.progress[d.n];
+          const num = String(d.n).padStart(2, "0");
+          if (!p?.completed) {
+            if (done === 0) return null;
+            return (
+              <li key={d.n} className="stack__item is-todo">
+                <span className="stack__num num">{num}</span>
+                <span className="stack__stage">{STAGE[d.n] ?? d.name}</span>
+              </li>
+            );
+          }
+          const text = renderOutput(d.finalize, p.answers);
+          return (
+            <li key={d.n} className="stack__item is-done">
+              <div className="stack__row">
+                <span className="stack__num num">{num}</span>
+                <span className="stack__stage">{STAGE[d.n] ?? d.name}</span>
+                <span className="stack__state">
+                  <Tick className="stack__tick" /> <span className="sr-only">concluído</span>
+                </span>
+                <CopyButton text={text} />
+              </div>
+              <pre className="stack__body">{text}</pre>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }

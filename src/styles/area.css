@@ -832,3 +832,169 @@ details[open] > summary .tool__sign::after {
     width: 100%;
   }
 }
+
+/* ---------- YOUR BUILD (stack de artefatos) ---------- */
+
+.stack {
+  margin-top: var(--s-9);
+}
+.stack__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+.stack__count {
+  font-size: var(--t-caption);
+  color: var(--text-3);
+}
+.stack__empty {
+  margin: var(--s-4) 0 0;
+  font-size: 14px;
+  color: var(--text-3);
+}
+.stack__list {
+  list-style: none;
+  margin: var(--s-4) 0 0;
+  padding: 0;
+  border-top: var(--bw) solid var(--line);
+}
+.stack__list:empty {
+  display: none;
+}
+.stack__item {
+  border-bottom: var(--bw) solid var(--line-soft);
+}
+.stack__item.is-todo {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: var(--s-3);
+  align-items: center;
+  min-height: 40px;
+  color: var(--text-4);
+  font-size: var(--t-caption);
+  letter-spacing: var(--tr-label);
+}
+.stack__item.is-done {
+  padding: var(--s-4) 0 var(--s-5);
+}
+.stack__row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto auto;
+  gap: var(--s-3);
+  align-items: center;
+}
+.stack__num {
+  font-size: 13px;
+  color: var(--text-3);
+}
+.stack__stage {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--t-caption);
+  font-weight: var(--w-medium);
+  letter-spacing: var(--tr-label);
+}
+.stack__item.is-done .stack__stage {
+  color: var(--text-2);
+}
+.stack__state {
+  display: inline-flex;
+  color: var(--text);
+}
+.stack__tick {
+  width: 16px;
+  height: 16px;
+}
+.stack__body {
+  margin: var(--s-3) 0 0;
+  padding-left: calc(48px + var(--s-3));
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+}
+@media (max-width: 479px) {
+  .stack__row {
+    grid-template-columns: 32px minmax(0, 1fr) auto auto;
+  }
+  .stack__item.is-todo {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+  .stack__body {
+    padding-left: 0;
+  }
+}
+.verdict .stack {
+  justify-self: stretch;
+}
+
+/* ---------- COMMIT BUILD (concluir dia) ---------- */
+
+.commit {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: 72px;
+}
+.commit__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -1px;
+  height: 1px;
+  background: var(--line);
+  overflow: hidden;
+}
+.commit__bar > i {
+  position: absolute;
+  inset: 0;
+  background: var(--osso);
+  transform-origin: left;
+  transform: scaleX(0.86);
+  transition: transform var(--d-fast) var(--e-out);
+}
+.commit[data-phase="committing"] .commit__bar > i {
+  animation: commit-fill var(--d-slow) var(--e-out) both;
+}
+.commit[data-phase="committed"] .commit__bar > i,
+.commit[data-phase="next"] .commit__bar > i {
+  transform: scaleX(1);
+}
+@keyframes commit-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+.commit__state {
+  font-family: var(--f-mono);
+  font-size: var(--t-caption);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--text);
+  white-space: nowrap;
+}
+.commit__state > span {
+  display: inline-block;
+  animation: rise var(--d-fast) var(--e-out) both;
+}
+.commit__day {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--t-caption);
+  letter-spacing: var(--tr-label);
+  color: var(--text-3);
+}
+@media (prefers-reduced-motion: reduce) {
+  .commit[data-phase="committing"] .commit__bar > i {
+    animation: none;
+    transform: scaleX(0);
+  }
+}

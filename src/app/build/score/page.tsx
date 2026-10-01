@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, type CSSProperties } from "react";
-import { AreaFallback, Shell, useArea } from "@/components/area";
+import { AreaFallback, BuildStack, Shell, useArea } from "@/components/area";
 import { Arrow, screenTransition } from "@/components/ui";
 import { MENTORSHIP_URL } from "@/config";
 import { LEVELS, SCORE_QUESTIONS, computeLevel, type Level } from "@/lib/build";
@@ -98,6 +98,8 @@ export default function ScorePage() {
               </div>
             )}
           </div>
+
+          <BuildStack days={state.content.days} progress={state.progress} />
         </section>
       </Shell>
     );
