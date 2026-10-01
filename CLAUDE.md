@@ -48,3 +48,9 @@ body { background: linear-gradient(180deg, var(--campo-top), var(--campo-bottom)
 - Rejeitar: roxo/cores saturadas, emoji, ilustração/foto de banco, botão arredondado com sombra, fundo chapado, fonte grossa/estilo coach, ostentação
 - Motion: ease-out com propriedade explícita (nunca `transition: all`), curto, nada saindo de `scale(0)`, `:active` em todo botão
 - Assinatura: ALPHA — BUILD THE LIFE YOU WANT. Copy em português.
+
+## Fase atual (01/10/2026)
+Design aprovado. Daqui em diante: polish + conversão + operação do funil. Evitar redesign e mudanças grandes no ALPHA LAUNCH.
+
+- **Duas portas / "A porta vazia"** (`TwoDoors` em `src/components/ui.tsx`): elemento especial, só em dois lugares — seção do resultado e abertura do DAY 07. Não usar em hero, quiz, outros dias ou peças novas; perde força se repetir.
+- Narrativa da área: DAY 01 "Agora começou." → DAY 02–06 construção → DAY 07 "Hoje você entra pela porta vazia."
