@@ -118,6 +118,37 @@ export function RouteMap(props: { picked: RouteKey | null; draw?: boolean; class
   );
 }
 
+// ---------- DUAS PORTAS ----------
+
+// Conseguir clientes (vazia, um marco) × construir mais uma coisa (a multidão).
+// Mesma gramática do mapa de rotas: linha fina, marcos quadrados, a escolha certa em osso.
+const CROWD = Array.from({ length: 6 * 9 }, (_, i) => ({ x: 236 + (i % 9) * 19 + (Math.floor(i / 9) % 2) * 6, y: 112 + Math.floor(i / 9) * 15 }));
+
+export function TwoDoors(props: { className?: string }) {
+  return (
+    <svg
+      className={`doors ${props.className ?? ""}`}
+      viewBox="0 0 420 210"
+      role="img"
+      aria-label="Duas portas: conseguir clientes, quase vazia; construir mais uma coisa, com uma multidão na fila."
+    >
+      <line className="doors__ground" x1="0" y1="200" x2="420" y2="200" />
+      <g className="doors__door doors__door--open">
+        <path d="M 40 200 V 44 H 150 V 200" pathLength={1} />
+        <text x="95" y="30">Conseguir clientes</text>
+        <rect className="doors__one" x="90.5" y="178" width="9" height="9" />
+      </g>
+      <g className="doors__door">
+        <path d="M 262 200 V 44 H 372 V 200" pathLength={1} />
+        <text x="317" y="30">Construir mais uma coisa</text>
+        {CROWD.map((c, i) => (
+          <rect key={i} className="doors__crowd" x={c.x} y={c.y} width="7" height="7" />
+        ))}
+      </g>
+    </svg>
+  );
+}
+
 // ---------- REVEAL ----------
 
 /** Revela uma vez ao entrar na tela. Sem JS/IO: aparece direto. */

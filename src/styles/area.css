@@ -389,6 +389,23 @@
 .kickoff .routebadge {
   margin: 0;
 }
+/* DAY 07: a porta vazia abre o dia da publicação */
+.kickoff--doors {
+  align-items: flex-end;
+  gap: var(--s-5);
+}
+.kickoff__doors {
+  width: 100%;
+  max-width: 300px;
+}
+.kickoff__doors path {
+  stroke-dashoffset: 1;
+  animation: draw var(--d-slow) var(--e-inout) var(--delay-in) forwards;
+}
+.kickoff__doors .doors__crowd,
+.kickoff__doors .doors__one {
+  animation: rise var(--d-base) var(--e-out) var(--d-slow) both;
+}
 
 .dayhead {
   display: grid;

@@ -7,19 +7,8 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { OFFER } from "@/config";
 import { BUILD_DAYS, personalLine, type Route } from "@/lib/quiz";
 import { track } from "@/lib/tracking";
-import { Arrow, Artifact, Rail, Reveal, RouteMap } from "../ui";
+import { Arrow, Artifact, Rail, Reveal, RouteMap, TwoDoors } from "../ui";
 import type { Lead } from "./Steps";
-
-const BUILD_OUTPUTS = [
-  "uma direção definida",
-  "um problema específico",
-  "uma oferta estruturada",
-  "seu MVP definido",
-  "posicionamento e mensagem",
-  "estratégia inicial de distribuição",
-  "plano de lançamento",
-  "checklist de execução",
-];
 
 const BUILD_LEVELS = [
   { code: "01", title: "Você começou.", fill: 1 / 3 },
@@ -188,22 +177,21 @@ export function Result(props: { route: Route; answers: number[]; lead: Lead | nu
         </ol>
       </section>
 
-      {/* ---------- O QUE VOCÊ CONSTRÓI ---------- */}
-      <section className="builds wrap">
+      {/* ---------- DUAS PORTAS ---------- */}
+      <section className="doorsec wrap">
         <Reveal className="section-head">
-          <span className="label">O que você vai construir</span>
-          <h2 className="h2">Não são dezenas de horas de aulas. É um sistema de execução.</h2>
+          <span className="label">A porta vazia</span>
+          <h2 className="h2">Quase todo mundo escolhe a porta errada.</h2>
+          <p className="body">
+            Mais um ajuste, mais uma funcionalidade, mais um curso. Construir parece progresso — e é confortável, porque
+            ninguém pode dizer não. A porta de conseguir clientes vive vazia.
+          </p>
         </Reveal>
-        <ol className="builds__list">
-          {BUILD_OUTPUTS.map((o, i) => (
-            <Reveal as="li" key={o} i={i % 4}>
-              <span className="num">{String(i + 1).padStart(2, "0")}</span>
-              {o}
-            </Reveal>
-          ))}
-        </ol>
-        <Reveal>
-          <p className="body builds__foot">Tudo dentro do app da ALPHA.</p>
+        <Reveal i={1} className="doorsec__fig">
+          <TwoDoors />
+        </Reveal>
+        <Reveal i={2}>
+          <p className="manifesto__line">O 7-Day Build termina nela: no DAY 07, sua oferta vai para o mercado.</p>
         </Reveal>
       </section>
 

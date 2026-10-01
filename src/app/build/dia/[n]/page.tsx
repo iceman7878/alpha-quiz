@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { AreaFallback, Shell, useArea } from "@/components/area";
-import { Arrow, Artifact, CopyButton, Tick } from "@/components/ui";
+import { Arrow, Artifact, CopyButton, Tick, TwoDoors } from "@/components/ui";
 import { renderOutput, type Answers, type Day, type Field } from "@/lib/build";
 import { ROUTES, type RouteKey } from "@/lib/quiz";
 import { saveDay, type Progress } from "@/lib/store";
@@ -124,6 +124,12 @@ function DayView(props: {
               <span>{route.name}</span>
             </span>
           )}
+        </div>
+      )}
+      {day.n === 7 && (
+        <div className="kickoff kickoff--doors enter">
+          <span className="kickoff__lead">Hoje você entra pela porta vazia.</span>
+          <TwoDoors className="kickoff__doors" />
         </div>
       )}
 
@@ -274,7 +280,7 @@ function DayView(props: {
                       ? "Salvamento automático"
                       : (
                           <button className="savestate__go" onClick={goToFirstField}>
-                            Comece pelo campo 01 ↓
+                            Ir ao exercício ↓
                           </button>
                         )}
             </span>

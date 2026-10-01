@@ -739,6 +739,67 @@ a {
   animation-delay: var(--route-pick);
 }
 
+/* ---------- DUAS PORTAS ---------- */
+
+.doors {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.doors__ground {
+  stroke: var(--osso);
+  stroke-opacity: 0.2;
+  stroke-width: 0.9;
+}
+.doors path {
+  fill: none;
+  stroke: var(--osso);
+  stroke-width: 0.9;
+  stroke-opacity: 0.3;
+}
+.doors__door--open path {
+  stroke-opacity: 1;
+  stroke-width: 1.4;
+}
+.doors text {
+  fill: var(--osso);
+  fill-opacity: 0.46;
+  font-family: var(--f-body);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  text-anchor: middle;
+}
+.doors__door--open text {
+  fill-opacity: 1;
+}
+.doors__one {
+  fill: var(--osso);
+}
+.doors__crowd {
+  fill: var(--campo-top);
+  stroke: var(--osso);
+  stroke-opacity: 0.4;
+  vector-effect: non-scaling-stroke;
+}
+/* Ao revelar: as portas se desenham; a multidão chega por último */
+.doors path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset var(--d-slow) var(--e-inout) var(--delay-in);
+}
+.doors__crowd,
+.doors__one {
+  transition: opacity var(--d-slow) var(--e-out) var(--d-slow);
+}
+.reveal:not(.is-in) .doors path {
+  stroke-dashoffset: 1;
+}
+.reveal:not(.is-in) .doors__crowd,
+.reveal:not(.is-in) .doors__one {
+  opacity: 0;
+}
+
 /* ---------- estado de salvamento ---------- */
 
 .savestate {
@@ -777,6 +838,7 @@ a {
 }
 .savestate__go {
   min-height: 44px;
+  white-space: nowrap;
   padding: 0;
   border: 0;
   background: none;
