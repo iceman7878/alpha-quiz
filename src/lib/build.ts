@@ -60,6 +60,52 @@ export function renderOutput(template: string, a: Answers): string {
   return template.replace(/\{(\w+)\}/g, (_, k: string) => (a[k] || "").trim() || "…");
 }
 
+// ---------- FIRST MARKET TEST ----------
+// O documento final: só respostas reais da pessoa, organizadas na ordem do raciocínio.
+// Campo vazio = "…". Nada é inventado para preencher lacuna.
+
+export type FmtRow = { label: string; value: string; list?: boolean };
+export type FmtSection = { n: number; stage: string; question: string; lead: FmtRow; rows: FmtRow[] };
+export type Fmt = { sections: FmtSection[]; firstPerson: string; review: string };
+
+const val = (v?: string) => (v || "").trim() || "…";
+const lines = (v?: string) =>
+  (v || "")
+    .split("\n")
+    .map((l) => l.replace(/^\s*(\d+[.)]|[-•–—])\s*/, "").trim())
+    .filter(Boolean);
+
+export function firstMarketTest(byDay: Record<number, Answers | undefined>): Fmt {
+  const d = (n: number) => byDay[n] ?? {};
+  const [d1, d2, d3, d4, d5, d6, d7] = [1, 2, 3, 4, 5, 6, 7].map(d);
+  const r = (label: string, v?: string, list = false): FmtRow => ({ label, value: val(v), list });
+  const sections: FmtSection[] = [
+    { n: 1, stage: "DIRECTION", question: "O que estou construindo", lead: r("Direção", d1.direcao), rows: [r("Para quem", d1.publico), r("Por que eu", d1.vantagem), r("Fora destes 7 dias", d1.corte)] },
+    { n: 2, stage: "PROBLEM", question: "Qual problema resolvo", lead: r("O problema, nas palavras do cliente", d2.problema), rows: [r("Quem sente mais", d2.quem), r("Como resolve hoje", d2.hoje), r("Custo de não resolver", d2.custo), r("Evidências", d2.evidencia)] },
+    { n: 3, stage: "OFFER", question: "Qual é a oferta", lead: r("Resultado", d3.resultado), rows: [r("Para quem", d3.quem), r("Mecanismo", d3.mecanismo), r("O que a pessoa recebe", d3.entrega), r("Preço", d3.preco)] },
+    { n: 4, stage: "MVP", question: "Como entrego", lead: r("O mínimo que entrega o resultado", d4.minimo), rows: [r("Formato", d4.como), r("Primeira entrega pronta até", d4.prazo), r("Fica para a versão 2", d4.v2)] },
+    { n: 5, stage: "POSITION", question: "Como me posiciono", lead: r("Headline", d5.headline), rows: [r("Subheadline", d5.sub), r("Promessa", d5.promessa), r("Benefícios", d5.beneficios), r("CTA", d5.cta), r("Bio", d5.bio)] },
+    { n: 6, stage: "DISTRIBUTION", question: "Onde encontro pessoas", lead: r("Onde estão as primeiras 30", d6.onde), rows: [r("Caminho", d6.caminho), r("Canal", d6.canal), r("Frequência", d6.frequencia), r("Hooks", d6.hooks), r("Conteúdos prontos", d6.conteudos), r("CTA", d6.cta)] },
+    { n: 7, stage: "FIRST 10", question: "Quem são os primeiros 10", lead: r("Lista", lines(d7.lista).join("\n"), true), rows: [r("Primeira mensagem", d7.abordagem)] },
+    { n: 8, stage: "LAUNCH", question: "Como coloco no mercado", lead: r("Oferta no ar", d7.link), rows: [r("Primeiro conteúdo", d7.post), r("Métrica", d7.metrica), r("Revisão", d7.revisao)] },
+  ];
+  return { sections, firstPerson: lines(d7.lista)[0] ?? "…", review: val(d7.revisao) };
+}
+
+/** Texto limpo do documento, útil fora do produto (notas, WhatsApp, e-mail). */
+export function fmtText(f: Fmt, nome?: string | null): string {
+  const out = ["FIRST MARKET TEST" + (nome ? ` — ${nome}` : ""), ""];
+  for (const s of f.sections) {
+    out.push(`${String(s.n).padStart(2, "0")} — ${s.stage}`, s.question, "");
+    const lead = s.lead.list && s.lead.value !== "…" ? s.lead.value.split("\n").map((l, i) => `${i + 1}. ${l}`).join("\n") : s.lead.value;
+    out.push(lead, "");
+    for (const row of s.rows) out.push(row.value.includes("\n") ? `${row.label}:\n${row.value}` : `${row.label}: ${row.value}`);
+    out.push("");
+  }
+  out.push("NEXT MOVE", `Mande a mensagem para ${f.firstPerson}. Depois, as outras 9 até ${f.review}.`, "", "ALPHA — BUILD THE LIFE YOU WANT");
+  return out.join("\n");
+}
+
 /** Build Score: 7 critérios objetivos, respondidos no DAY 07. */
 export const SCORE_QUESTIONS = [
   "Você definiu uma direção?",

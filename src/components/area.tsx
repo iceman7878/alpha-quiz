@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { renderOutput, type BuildContent, type Day } from "@/lib/build";
+import { firstMarketTest, fmtText, renderOutput, type BuildContent, type Day } from "@/lib/build";
 import { currentEmail, isDemo, loadContent, loadMember, loadProgress, mode, signOut, type Member, type Progress } from "@/lib/store";
-import { CopyButton, Rail, Tick } from "./ui";
+import { CopyButton, Rail, Reveal } from "./ui";
 
 export { CopyButton } from "./ui";
 
@@ -197,7 +197,7 @@ const STAGE: Record<number, string> = {
   7: "LAUNCH",
 };
 
-/** YOUR BUILD: os artefatos já concluídos, empilhados — mesmo texto do "03 · Finalize" (renderOutput). */
+/** YOUR BUILD: o blueprint do que foi construído — um eixo vertical, um estágio por dia, o output real de cada um. */
 export function BuildStack(props: { days: Day[]; progress: Progress; className?: string }) {
   const done = props.days.filter((d) => props.progress[d.n]?.completed).length;
   return (
@@ -218,26 +218,98 @@ export function BuildStack(props: { days: Day[]; progress: Progress; className?:
             return (
               <li key={d.n} className="stack__item is-todo">
                 <span className="stack__num num">{num}</span>
-                <span className="stack__stage">{STAGE[d.n] ?? d.name}</span>
+                <div className="stack__main">
+                  <span className="stack__stage">{STAGE[d.n] ?? d.name}</span>
+                </div>
               </li>
             );
           }
           const text = renderOutput(d.finalize, p.answers);
           return (
-            <li key={d.n} className="stack__item is-done">
-              <div className="stack__row">
-                <span className="stack__num num">{num}</span>
-                <span className="stack__stage">{STAGE[d.n] ?? d.name}</span>
-                <span className="stack__state">
-                  <Tick className="stack__tick" /> <span className="sr-only">concluído</span>
-                </span>
-                <CopyButton text={text} />
+            <Reveal as="li" key={d.n} className="stack__item is-done">
+              <span className="stack__num num">{num}</span>
+              <div className="stack__main">
+                <div className="stack__row">
+                  <span className="stack__stage">
+                    {STAGE[d.n] ?? d.name}
+                    <span className="sr-only"> — concluído</span>
+                  </span>
+                  <CopyButton text={text} />
+                </div>
+                <pre className="stack__body">{text}</pre>
               </div>
-              <pre className="stack__body">{text}</pre>
-            </li>
+            </Reveal>
           );
         })}
       </ol>
     </section>
+  );
+}
+
+/** FIRST MARKET TEST: o documento final. Só aparece com o DAY 07 concluído; só usa o que a pessoa escreveu. */
+export function FirstMarketTest(props: { progress: Progress; nome?: string | null; className?: string }) {
+  if (!props.progress[7]?.completed) return null;
+  const byDay = Object.fromEntries(Object.entries(props.progress).map(([k, v]) => [k, v?.answers]));
+  const fmt = firstMarketTest(byDay);
+  const text = fmtText(fmt, props.nome);
+  return (
+    <article className={`fmt ${props.className ?? ""}`} aria-labelledby="fmt-title">
+      <header className="fmt__head">
+        <span className="label">First market test</span>
+        <h2 className="fmt__title" id="fmt-title">
+          {props.nome ? `${props.nome}, este é o seu plano para testar no mercado.` : "Este é o seu plano para testar no mercado."}
+        </h2>
+        <p className="fmt__lead">Escrito por você, dia a dia. Da direção à primeira mensagem.</p>
+      </header>
+
+      <ol className="fmt__list">
+        {fmt.sections.map((s) => (
+          <Reveal as="li" key={s.n} className="fmt__sec">
+            <span className="fmt__num num" aria-hidden>
+              {String(s.n).padStart(2, "0")}
+            </span>
+            <div className="fmt__body">
+              <h3 className="fmt__stage">
+                <span className="label">{s.stage}</span>
+                <span className="fmt__q">{s.question}</span>
+              </h3>
+              {s.lead.list && s.lead.value !== "…" ? (
+                <ol className="fmt__people">
+                  {s.lead.value.split("\n").map((l, i) => (
+                    <li key={i}>
+                      <span className="num">{String(i + 1).padStart(2, "0")}</span>
+                      <span>{l}</span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className={`fmt__lead-value${s.lead.value === "…" ? " is-empty" : ""}`}>{s.lead.value}</p>
+              )}
+              <dl className="fmt__rows">
+                {s.rows.map((r) => (
+                  <div key={r.label} className="fmt__row">
+                    <dt>{r.label}</dt>
+                    <dd className={r.value === "…" ? "is-empty" : undefined}>{r.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </Reveal>
+        ))}
+      </ol>
+
+      <Reveal className="fmt__next">
+        <span className="label">Next move</span>
+        <p className="fmt__move">
+          Mande a mensagem para <strong>{fmt.firstPerson}</strong>.
+          <br />
+          Depois, as outras 9 até <strong>{fmt.review}</strong>.
+        </p>
+        <div className="fmt__copy">
+          <CopyButton text={text} label="Copy build" />
+          <span className="fmt__sign">ALPHA — BUILD THE LIFE YOU WANT</span>
+        </div>
+      </Reveal>
+    </article>
   );
 }

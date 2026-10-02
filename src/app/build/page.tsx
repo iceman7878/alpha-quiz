@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { AreaFallback, BuildStack, DayRail, Shell, useArea } from "@/components/area";
+import { AreaFallback, BuildStack, DayRail, FirstMarketTest, Shell, useArea } from "@/components/area";
 import { Arrow, Tick } from "@/components/ui";
 import { LEVELS } from "@/lib/build";
 import { ROUTES } from "@/lib/quiz";
@@ -120,6 +120,8 @@ export default function BuildHome() {
         </span>
         <span aria-hidden>→</span>
       </Link>
+
+      <FirstMarketTest progress={progress} nome={member.nome} />
 
       <BuildStack days={days} progress={progress} />
     </Shell>
