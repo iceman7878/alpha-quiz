@@ -7,9 +7,9 @@ import { useEffect, useState } from "react";
 import { Artifact, Rail, Tick } from "../ui";
 
 const FIELDS = [
-  { label: "Quem compra", value: "Clínicas de estética de SP" },
-  { label: "Resultado", value: "Responder pacientes em até 1 minuto" },
-  { label: "Mecanismo", value: "Atendimento com IA treinado em 48h" },
+  { label: "Quem compra", value: "Clínicas de estética da minha cidade" },
+  { label: "Resultado", value: "WhatsApp respondendo as perguntas mais comuns em 7 dias" },
+  { label: "Mecanismo", value: "Respostas treinadas com o que a clínica mais ouve" },
 ];
 const TYPE_MS = 34;
 const HOLD_MS = 2600;
@@ -50,7 +50,7 @@ export function BuildDemo() {
   }, []);
 
   const low = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
-  const output = `Eu ajudo ${low(FIELDS[0].value)} a ${low(FIELDS[1].value)}, com ${low(FIELDS[2].value)}.`;
+  const output = `Eu ajudo ${low(FIELDS[0].value)} a ter o ${FIELDS[1].value}, com ${low(FIELDS[2].value)}.`;
   const typing = chars.findIndex((c, i) => c < FIELDS[i].value.length);
 
   return (

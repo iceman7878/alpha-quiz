@@ -95,6 +95,9 @@ export type Route = {
   statement: string;
   objective: string[];
   day01: string;
+  /** Página de resultado: ideia → direção (exemplo do DAY 01) e onde estão as primeiras 30 pessoas (DAY 06). */
+  example: { before: string; after: string };
+  first30: string;
 };
 
 export const ROUTES: Record<RouteKey, Route> = {
@@ -107,6 +110,8 @@ export const ROUTES: Record<RouteKey, Route> = {
       "Seu perfil indica começar por uma solução simples para empresas, usando IA para entregar um resultado específico. Você vende execução — escopo fechado, preço claro.",
     objective: ["Encontrar 1 problema", "criar 1 solução", "colocar 1 oferta na rua"],
     day01: "Listar 10 tarefas repetitivas que negócios da sua região pagam para alguém resolver.",
+    example: { before: "Trabalhar com IA.", after: "Respostas automáticas no WhatsApp para clínicas de estética da minha cidade." },
+    first30: "Negócios locais no Google Maps, perfis da sua cidade e avaliações que reclamam de atendimento.",
   },
   produto: {
     key: "produto",
@@ -117,6 +122,8 @@ export const ROUTES: Record<RouteKey, Route> = {
       "Seu perfil indica transformar o que você domina em um produto enxuto com o seu nome. Validar a demanda primeiro, produzir depois — nada de meses gravando antes da primeira venda.",
     objective: ["Escolher 1 recorte", "desenhar 1 produto enxuto", "pré-vender antes de produzir"],
     day01: "Anotar as 10 perguntas que as pessoas mais te fazem sobre o seu assunto.",
+    example: { before: "Ensinar finanças.", after: "Uma planilha mensal para MEI que mistura a conta pessoal com a da empresa." },
+    first30: "Quem já comenta e pergunta sobre o seu assunto, grupos e comunidades do tema, seus próprios contatos.",
   },
   bastidor: {
     key: "bastidor",
@@ -127,6 +134,8 @@ export const ROUTES: Record<RouteKey, Route> = {
       "Seu perfil indica construir por trás de quem já tem audiência. Especialistas com público e sem estrutura existem aos montes — você entra com a oferta, o funil e a rotina que eles não montam.",
     objective: ["Mapear 1 especialista", "estruturar 1 oferta", "propor 1 projeto-piloto"],
     day01: "Mapear 10 especialistas com audiência e sem produto estruturado.",
+    example: { before: "Ajudar experts a vender.", after: "Montar a primeira oferta digital de nutricionistas com audiência e nenhum produto." },
+    first30: "Especialistas com 5 a 20 mil seguidores que recebem “você tem curso?” nos comentários e não têm produto na bio.",
   },
   distribuicao: {
     key: "distribuicao",
@@ -137,6 +146,8 @@ export const ROUTES: Record<RouteKey, Route> = {
       "Seu perfil indica começar distribuindo o que já existe. Sem produto próprio, sem rosto, sem estoque — o ativo que você constrói é o canal, e canal se constrói com constância.",
     objective: ["Escolher 1 nicho", "escolher 1 produto", "abrir 1 canal de distribuição"],
     day01: "Escolher um nicho e três produtos validados nele para comparar.",
+    example: { before: "Ser afiliado de alguma coisa.", after: "Um perfil sobre rotina de estudante que recomenda ferramentas de organização já validadas." },
+    first30: "Comunidades do nicho, comentários pedindo indicação e perfis do mesmo tema com quem dá para trocar divulgação.",
   },
 };
 
