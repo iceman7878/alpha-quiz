@@ -57,7 +57,11 @@ export type BuildContent = { days: Day[]; day01Examples: Record<string, string> 
 
 /** Monta o entregável do dia a partir do modelo e das respostas. */
 export function renderOutput(template: string, a: Answers): string {
-  return template.replace(/\{(\w+)\}/g, (_, k: string) => (a[k] || "").trim() || "…");
+  // "{campo}." com resposta vazia ou já pontuada não ganha ponto extra ("…." / "fim..").
+  return template.replace(/\{(\w+)\}(\.?)/g, (_, k: string, dot: string) => {
+    const v = (a[k] || "").trim() || "…";
+    return dot && /[.…!?]$/.test(v) ? v : v + dot;
+  });
 }
 
 // ---------- FIRST MARKET TEST ----------
