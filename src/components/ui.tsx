@@ -182,6 +182,18 @@ export function Reveal(props: { children: ReactNode; i?: number; as?: "div" | "s
   );
 }
 
+// ---------- FIELD NOTE ----------
+
+/** Uma frase para guardar: linha vertical + rótulo + frase. Sem caixa. */
+export function FieldNote({ children }: { children: ReactNode }) {
+  return (
+    <aside className="fieldnote">
+      <span className="label">Field note</span>
+      <p className="fieldnote__text">{children}</p>
+    </aside>
+  );
+}
+
 // ---------- COPY ----------
 
 export function CopyButton({ text, label = "Copiar" }: { text: string; label?: string }) {

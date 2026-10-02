@@ -1,6 +1,8 @@
 // Parte pública do 7-Day Build: tipos e Build Score. O conteúdo dos dias fica em
 // build-content.ts (servidor) e só chega ao navegador depois do login.
 
+import type { RouteKey } from "./quiz";
+
 export type Answers = Record<string, string>;
 
 export type Field = {
@@ -12,17 +14,42 @@ export type Field = {
 
 export type Tool = { title: string; body: string };
 
+/** Um passo do método. `points` = lista curta; `byRoute` = o mesmo passo aplicado a cada rota do quiz. */
+export type Step = { title: string; text: string; points?: string[]; byRoute?: Record<RouteKey, string>; after?: string };
+
+/** SEE IT: o mesmo movimento, antes e depois, em cada rota. */
+export type Example = { route: RouteKey; before: string; after: string; why: string };
+
+/** Roteiro dentro da aula (descoberta, conversa de venda). `note` explica o porquê da fala. */
+export type ScriptLine = { who: "voce" | "cliente" | "tempo"; text: string; note?: string };
+export type Script = { title: string; intro?: string; lines: ScriptLine[] };
+
+/** Resposta a uma objeção: o que a pessoa diz, o que você responde, por quê. */
+export type Reply = { says: string; answer: string; why: string };
+
 export type Day = {
   n: number;
   code: string;
   name: string;
   title: string;
   objective: string;
-  understand: string[];
+  /** THE IDEA — a abertura que muda a forma de ver o problema. */
+  idea: string;
+  /** THE PRINCIPLE */
+  principle: string[];
+  /** THE METHOD */
+  method: Step[];
+  scripts?: Script[];
+  replies?: Reply[];
+  /** SEE IT — rótulos do antes/depois e um exemplo por rota. */
+  seeIt: { before: string; after: string; examples: Example[] };
+  fieldNote: string;
   fields: Field[];
   /** Modelo do entregável: {campo} é trocado pela resposta. */
   finalize: string;
   outputLabel: string;
+  nextMove: { action: string; text: string };
+  /** Arsenal: material de consulta, no fim do dia. */
   tools: Tool[];
 };
 

@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { AreaFallback, Shell, useArea } from "@/components/area";
-import { Arrow, Artifact, CopyButton, Tick, TwoDoors } from "@/components/ui";
-import { renderOutput, type Answers, type Day, type Field } from "@/lib/build";
+import { Arrow, Artifact, CopyButton, FieldNote, Reveal, Tick, TwoDoors } from "@/components/ui";
+import { renderOutput, type Answers, type Day, type Field, type Reply, type Script, type Step } from "@/lib/build";
 import { ROUTES, type RouteKey } from "@/lib/quiz";
 import { saveDay, type Progress } from "@/lib/store";
 
@@ -124,7 +124,7 @@ function DayView(props: {
   const route = props.route ? ROUTES[props.route] : null;
   const hasWork = Object.values(props.initial).some((v) => v.trim());
 
-  // Leva direto ao trabalho: útil no mobile, onde o contexto vem antes dos campos.
+  // Leva direto ao trabalho: a leitura vem antes dos campos.
   function goToFirstField() {
     const el = document.getElementById(`f-${day.fields[0].id}`);
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -176,34 +176,49 @@ function DayView(props: {
         </p>
       </header>
 
-      <div className="daygrid">
-        {/* 01 — CONTEXTO */}
-        <aside className="context">
-          <details className="context__box" open={!hasWork || undefined}>
-            <summary>
-              <span className="step">01 · Entenda</span>
-              <span className="context__toggle" aria-hidden />
-            </summary>
-            <div className="context__text">
-              {day.n === 1 && route && (
-                <p className="context__route">
-                  Sua rota pelo quiz: <strong>{route.name}</strong>. {route.statement}
-                </p>
-              )}
-              {day.understand.map((p) => (
-                <p key={p}>{p}</p>
-              ))}
-            </div>
-          </details>
-        </aside>
+      <article className="lesson">
+        {/* 01 — THE IDEA */}
+        <Chapter n={1} label="The idea">
+          <p className="lesson__idea">{day.idea}</p>
+          {day.n === 1 && route && (
+            <p className="lesson__route">
+              Sua rota pelo quiz: <strong>{route.name}</strong>. {route.statement}
+            </p>
+          )}
+        </Chapter>
 
-        <div className="work">
-          {/* 02 — WORKSPACE */}
-          <section className="workspace" aria-labelledby="ws-title">
+        {/* 02 — THE PRINCIPLE */}
+        <Chapter n={2} label="The principle">
+          <div className="prose">
+            {day.principle.map((p) => (
+              <p key={p}>{p}</p>
+            ))}
+          </div>
+        </Chapter>
+
+        {/* 03 — THE METHOD (+ roteiros e respostas: ensinados aqui, não escondidos no arsenal) */}
+        <Chapter n={3} label="The method">
+          <ol className="method">
+            {day.method.map((s, i) => (
+              <MethodStep key={s.title} step={s} index={i} route={props.route} />
+            ))}
+          </ol>
+          {day.scripts?.map((sc) => <ScriptView key={sc.title} script={sc} />)}
+          {day.replies && day.replies.length > 0 && <RepliesView replies={day.replies} />}
+        </Chapter>
+
+        {/* 04 — SEE IT */}
+        <Chapter n={4} label="See it">
+          <SeeIt seeIt={day.seeIt} route={props.route} />
+        </Chapter>
+
+        <FieldNote>{day.fieldNote}</FieldNote>
+
+        {/* 05 — YOUR MOVE */}
+        <Chapter n={5} label="Your move">
+          <section className="workspace" aria-label="Your move">
             <header className="work__head">
-              <span className="step" id="ws-title">
-                02 · Faça
-              </span>
+              <span className="caption">Preencha com o seu caso. Salva sozinho.</span>
               <span className="work__count num" aria-live="polite">
                 {filled}/{day.fields.length}
               </span>
@@ -221,12 +236,11 @@ function DayView(props: {
               ))}
             </div>
           </section>
+        </Chapter>
 
-          {/* 03 — ARTEFATO */}
-          <section className="finalize" aria-labelledby="out-title">
-            <span className="step" id="out-title">
-              03 · Finalize
-            </span>
+        {/* 06 — YOUR OUTPUT */}
+        <Chapter n={6} label="Your output">
+          <div className="finalize">
             <Artifact
               title={day.outputLabel}
               sealed={complete}
@@ -235,53 +249,59 @@ function DayView(props: {
             >
               <pre className="artifact__body">{output}</pre>
             </Artifact>
+          </div>
+        </Chapter>
+
+        {/* 07 — NEXT MOVE */}
+        <Chapter n={7} label="Next move">
+          <p className="nextmove__action">{day.nextMove.action}</p>
+          <p className="nextmove__text">{day.nextMove.text}</p>
+        </Chapter>
+
+        {/* ARSENAL — material de consulta */}
+        {day.tools.length > 0 && (
+          <section className="tools" aria-labelledby="tools-title">
+            <span className="label" id="tools-title">
+              Arsenal
+            </span>
+            <ul className="tools__list">
+              {day.tools.map((t) => (
+                <li key={t.title}>
+                  <details className="tool">
+                    <summary>
+                      <span>{t.title}</span>
+                      <span className="tool__sign" aria-hidden />
+                    </summary>
+                    <pre>{t.body}</pre>
+                    <div className="tool__foot">
+                      <CopyButton text={t.body} />
+                    </div>
+                  </details>
+                </li>
+              ))}
+            </ul>
           </section>
+        )}
 
-          {/* FERRAMENTAS */}
-          {day.tools.length > 0 && (
-            <section className="tools" aria-labelledby="tools-title">
-              <span className="step" id="tools-title">
-                Ferramentas
-              </span>
-              <ul className="tools__list">
-                {day.tools.map((t) => (
-                  <li key={t.title}>
-                    <details className="tool">
-                      <summary>
-                        <span>{t.title}</span>
-                        <span className="tool__sign" aria-hidden />
-                      </summary>
-                      <pre>{t.body}</pre>
-                      <div className="tool__foot">
-                        <CopyButton text={t.body} />
-                      </div>
-                    </details>
-                  </li>
-                ))}
-              </ul>
-            </section>
+        <nav className="daynav" aria-label="Dias">
+          {day.n > 1 ? (
+            <Link className="btn btn--quiet" href={`/build/dia/${day.n - 1}`}>
+              ← DAY 0{day.n - 1}
+            </Link>
+          ) : (
+            <span />
           )}
-
-          <nav className="daynav" aria-label="Dias">
-            {day.n > 1 ? (
-              <Link className="btn btn--quiet" href={`/build/dia/${day.n - 1}`}>
-                ← DAY 0{day.n - 1}
-              </Link>
-            ) : (
-              <span />
-            )}
-            {day.n < props.total ? (
-              <Link className="btn btn--quiet" href={`/build/dia/${day.n + 1}`}>
-                DAY 0{day.n + 1} →
-              </Link>
-            ) : (
-              <Link className="btn btn--quiet" href="/build/score">
-                Build Score →
-              </Link>
-            )}
-          </nav>
-        </div>
-      </div>
+          {day.n < props.total ? (
+            <Link className="btn btn--quiet" href={`/build/dia/${day.n + 1}`}>
+              DAY 0{day.n + 1} →
+            </Link>
+          ) : (
+            <Link className="btn btn--quiet" href="/build/score">
+              Build Score →
+            </Link>
+          )}
+        </nav>
+      </article>
 
       {/* Barra de ação: sempre à mão, com o estado de salvamento */}
       <div className="actionbar">
@@ -379,5 +399,153 @@ function FieldInput(props: { field: Field; index: number; value: string; hint?: 
         </p>
       )}
     </div>
+  );
+}
+
+// ---------- LIÇÃO ----------
+
+const pad = (n: number) => String(n).padStart(2, "0");
+const ROUTE_ORDER: RouteKey[] = ["servico", "produto", "bastidor", "distribuicao"];
+
+function Chapter(props: { n: number; label: string; children: ReactNode }) {
+  return (
+    <Reveal as="section" className="ch">
+      <span className="ch__num num" aria-hidden>
+        {pad(props.n)}
+      </span>
+      <div className="ch__body">
+        <h2 className="label ch__label">{props.label}</h2>
+        {props.children}
+      </div>
+    </Reveal>
+  );
+}
+
+function MethodStep({ step, index, route }: { step: Step; index: number; route: RouteKey | null }) {
+  const mine = route && step.byRoute ? route : null;
+  const others = step.byRoute ? ROUTE_ORDER.filter((k) => k !== mine) : [];
+  return (
+    <li className="method__step">
+      <span className="method__idx num">{pad(index + 1)}</span>
+      <div className="method__body">
+        <h3 className="method__title">{step.title}</h3>
+        <p className="method__text">{step.text}</p>
+        {step.points && (
+          <ul className="method__points">
+            {step.points.map((p) => (
+              <li key={p}>{p}</li>
+            ))}
+          </ul>
+        )}
+        {mine && step.byRoute && (
+          <div className="byroute">
+            <span className="byroute__label">Na sua rota — {ROUTES[mine].name}</span>
+            <p>{step.byRoute[mine]}</p>
+          </div>
+        )}
+        {step.byRoute && (
+          <details className="more">
+            <summary>{mine ? "Nas outras rotas" : "Por rota"}</summary>
+            <dl className="more__list">
+              {others.map((k) => (
+                <div key={k}>
+                  <dt>{ROUTES[k].name}</dt>
+                  <dd>{step.byRoute![k]}</dd>
+                </div>
+              ))}
+            </dl>
+          </details>
+        )}
+        {step.after && <p className="method__after">{step.after}</p>}
+      </div>
+    </li>
+  );
+}
+
+const WHO = { voce: "Você", cliente: "Cliente", tempo: "" } as const;
+
+function ScriptView({ script }: { script: Script }) {
+  const text = script.lines
+    .map((l) => (l.who === "tempo" ? `— ${l.text} —` : `${WHO[l.who].toUpperCase()}: ${l.text}`))
+    .join("\n\n");
+  return (
+    <section className="script">
+      <header className="script__head">
+        <h3 className="script__title">{script.title}</h3>
+        <CopyButton text={text} />
+      </header>
+      {script.intro && <p className="script__intro">{script.intro}</p>}
+      <ol className="script__lines">
+        {script.lines.map((l, i) =>
+          l.who === "tempo" ? (
+            <li key={i} className="script__time">
+              {l.text}
+            </li>
+          ) : (
+            <li key={i} className={`script__line is-${l.who}`}>
+              <span className="script__who">{WHO[l.who]}</span>
+              <div>
+                <p className="script__say">{l.text}</p>
+                {l.note && <p className="script__note">{l.note}</p>}
+              </div>
+            </li>
+          ),
+        )}
+      </ol>
+    </section>
+  );
+}
+
+function RepliesView({ replies }: { replies: Reply[] }) {
+  return (
+    <section className="replies">
+      <h3 className="script__title">Quando a pessoa diz…</h3>
+      <dl className="replies__list">
+        {replies.map((r) => (
+          <div key={r.says} className="reply">
+            <dt className="reply__says">“{r.says}”</dt>
+            <dd>
+              <p className="reply__answer">{r.answer}</p>
+              <p className="reply__why">{r.why}</p>
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function SeeIt({ seeIt, route }: { seeIt: Day["seeIt"]; route: RouteKey | null }) {
+  const main = seeIt.examples.find((e) => e.route === route) ?? seeIt.examples[0];
+  const others = seeIt.examples.filter((e) => e !== main);
+  const pair = (e: typeof main) => (
+    <div className="seeit">
+      <div className="seeit__side is-before">
+        <span className="seeit__tag">{seeIt.before}</span>
+        <p>{e.before}</p>
+      </div>
+      <div className="seeit__side is-after">
+        <span className="seeit__tag">{seeIt.after}</span>
+        <p>{e.after}</p>
+      </div>
+      <p className="seeit__why">{e.why}</p>
+    </div>
+  );
+  return (
+    <>
+      {route && main.route === route && <span className="byroute__label">Na sua rota — {ROUTES[route].name}</span>}
+      {pair(main)}
+      {others.length > 0 && (
+        <details className="more">
+          <summary>Nas outras rotas</summary>
+          {others.map((e) => (
+            <div key={e.route} className="more__ex">
+              <span className="byroute__label">{ROUTES[e.route].name}</span>
+              {pair(e)}
+            </div>
+          ))}
+        </details>
+      )}
+    </>
   );
 }
