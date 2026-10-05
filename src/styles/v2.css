@@ -1,0 +1,235 @@
+/* =====================================================================
+   /v2 — protótipo da nova landing (Fase 2: hero + BUILD CORE + 1ª transição)
+   Só classes v2-* e core*: não afeta a landing atual, o resultado nem a área.
+   ===================================================================== */
+
+.v2 {
+  position: relative;
+  overflow-x: clip;
+}
+.v2-top {
+  position: relative;
+  z-index: 2;
+}
+
+/* ---------- camada fixa do objeto ---------- */
+.v2-run {
+  position: relative;
+}
+.v2-pin {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  margin-bottom: -100svh;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Caixa quadrada do core: o mesmo enquadramento para canvas e pôster.
+   Cortada pela borda direita — peso diagonal, nunca centrada. */
+.core {
+  position: absolute;
+  aspect-ratio: 1;
+}
+.core__poster,
+.core__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.core__poster--b {
+  opacity: var(--core-p, 0);
+}
+.core__canvas {
+  opacity: 0;
+  transition: opacity var(--d-slow) var(--e-out);
+}
+.core.is-live .core__canvas {
+  opacity: 1;
+}
+.core.is-live .core__poster {
+  opacity: 0;
+  transition: opacity var(--d-slow) var(--e-out);
+}
+
+.v2-core {
+  width: 122vw;
+  right: -18vw;
+  top: calc(19svh - 61vw);
+}
+/* Mobile: o readout competiria com o objeto no mesmo canto; só aparece com espaço. */
+.v2-readout {
+  display: none;
+  position: absolute;
+  margin: 0;
+}
+@media (min-width: 900px) {
+  .v2-core {
+    width: min(66vw, 118svh);
+    right: -7vw;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .v2-readout {
+    display: block;
+    right: var(--gutter);
+    top: auto;
+    bottom: 6svh;
+  }
+}
+
+/* ---------- 01 hero ---------- */
+.v2-hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--s-6);
+  min-height: calc(100svh - 76px);
+  padding-bottom: clamp(32px, 7svh, 72px);
+  container-type: inline-size;
+}
+.v2-title {
+  margin: 0;
+  font-weight: var(--w-light);
+  text-transform: uppercase;
+  line-height: 0.94;
+  letter-spacing: -0.035em;
+  /* 4 versos (uma palavra por verso): a tipografia empilha como a coluna */
+  font-size: min(13.6cqi, 15svh);
+  word-spacing: 100vw;
+}
+.v2-title__b {
+  color: var(--text-3);
+}
+.v2-hero__body {
+  display: grid;
+  gap: var(--s-4);
+  max-width: 34rem;
+}
+.v2-lead {
+  margin: 0;
+  max-width: 28ch;
+  font-size: clamp(20px, 2vw, 26px);
+  font-weight: var(--w-light);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.v2-sub {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--t-small);
+}
+.v2-actions {
+  display: grid;
+  justify-items: start;
+  gap: var(--s-3);
+  margin-top: var(--s-2);
+}
+.v2-terms {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-1) var(--s-3);
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--t-caption);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+}
+.v2-terms .num {
+  color: var(--text);
+  font-size: 15px;
+  letter-spacing: 0;
+}
+@media (min-width: 900px) {
+  .v2-title {
+    font-size: min(7.4cqi, 14.5svh, 128px);
+  }
+}
+@media (min-width: 1080px) {
+  .v2-hero {
+    gap: var(--s-7);
+  }
+}
+
+/* ---------- 02 problema ---------- */
+.v2-problem {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-content: start;
+  gap: var(--s-7);
+  min-height: 150svh;
+  padding-top: 70svh; /* o hero sai da área do objeto antes das peças chegarem */
+  padding-bottom: var(--section);
+}
+.v2-ch {
+  display: block;
+  margin-bottom: var(--s-4);
+}
+.v2-h2 {
+  margin: 0;
+  max-width: 12ch;
+  font-size: clamp(36px, 5.6vw, 84px);
+  font-weight: var(--w-light);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tr-display);
+}
+.v2-consumed {
+  display: grid;
+  gap: var(--s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-3);
+  font-size: clamp(22px, 2.6vw, 34px);
+  font-weight: var(--w-light);
+  letter-spacing: var(--tr-heading);
+  line-height: 1.2;
+}
+.v2-verdict {
+  display: grid;
+  gap: var(--s-3);
+  padding-top: var(--s-5);
+  border-top: var(--bw) solid var(--line);
+  max-width: 34rem;
+}
+.v2-neq {
+  margin: 0;
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: var(--w-regular);
+  letter-spacing: var(--tr-heading);
+}
+.v2-note {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}
+@media (min-width: 900px) {
+  .v2-problem {
+    padding-top: 30svh;
+  }
+  .v2-problem > * {
+    max-width: 44%;
+  }
+}
+
+/* ---------- fim do protótipo ---------- */
+.v2-end {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding-top: var(--s-7);
+  padding-bottom: var(--s-7);
+  border-top: var(--bw) solid var(--line-soft);
+}
