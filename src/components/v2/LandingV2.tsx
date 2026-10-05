@@ -1,25 +1,30 @@
 "use client";
 
-// /v2 — Fase 2: HERO + BUILD CORE + PRIMEIRA TRANSIÇÃO. Protótipo de direção visual.
-// O core fica fixo (sticky) enquanto o hero dá lugar ao problema: PLANTA → ACÚMULO.
-// Sem sequestro de scroll: o scroll é nativo; só a posição da seção vira progresso.
+// /v2 — Fases 2 e 3: HERO + BUILD CORE + PLANTA → ACÚMULO → CONSTRUÇÃO → COMPLETION.
+// Protótipo de direção visual. O core fica fixo (sticky) enquanto as seções passam.
+// Sem sequestro de scroll: o scroll é nativo; só a posição das seções vira progresso.
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { OFFER } from "@/config";
 import { Arrow, Reveal } from "../ui";
 import { BuildCore, type CoreApi } from "./BuildCore";
+import { STAGES, lockedAt, phaseAt, type Phase } from "./core-timeline";
 
 const CONSUMED = ["Cursos.", "Vídeos.", "Threads.", "Prompts.", "Ferramentas.", "Ideias."];
 
 export function LandingV2() {
   const core = useRef<CoreApi>(null);
   const problem = useRef<HTMLElement>(null);
-  const [loose, setLoose] = useState(false);
+  const build = useRef<HTMLElement>(null);
+  const pin = useRef<HTMLDivElement>(null);
+  const [phase, setPhase] = useState<Phase>("PLANTA");
+  const [locked, setLocked] = useState(0);
 
   useEffect(() => {
     const el = problem.current?.querySelector("h2");
-    if (!el) return;
+    const run = build.current;
+    if (!el || !run) return;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     let raf = 0;
     let last = -1;
@@ -28,11 +33,19 @@ export function LandingV2() {
       const top = el.getBoundingClientRect().top;
       // Ancorado no título do problema: começa quando ele entra pela base e termina a ~45% da tela.
       let p = Math.min(1, Math.max(0, (vh - top) / (vh * 0.55)));
+      // Construção: a trilha da seção 03 inteira (menos uma tela) leva de 1 a 3.
+      const r = run.getBoundingClientRect();
+      const q = Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - vh)));
       if (reduced) p = p > 0.5 ? 1 : 0; // sem interpolação: troca de estado direta
-      if (p === last) return;
-      last = p;
-      core.current?.setProgress(p);
-      setLoose(p > 0.5);
+      let P = p + q * 2;
+      if (reduced && q > 0) P = q > 0.5 ? 3 : 1;
+      if (P === last) return;
+      last = P;
+      core.current?.setProgress(P);
+      // No mobile o objeto desce para o centro durante a construção (só CSS usa).
+      pin.current?.style.setProperty("--shift", String(Math.min(1, Math.max(0, (P - 1) / 0.5))));
+      setPhase(phaseAt(P));
+      setLocked(lockedAt(P));
     };
     const onScroll = () => {
       cancelAnimationFrame(raf);
@@ -65,10 +78,10 @@ export function LandingV2() {
 
       <div className="v2-run">
         {/* Camada fixa do objeto: acompanha hero e problema, depois sai com o scroll. */}
-        <div className="v2-pin">
+        <div className="v2-pin" ref={pin}>
           <BuildCore ref={core} className="v2-core" />
           <p className="micro v2-readout" aria-hidden>
-            00 / 07 — {loose ? "ACÚMULO" : "PLANTA"}
+            {String(locked).padStart(2, "0")} / 07 — {phase === "COMPLETE" ? "BUILD COMPLETE" : phase}
           </p>
         </div>
 
@@ -118,10 +131,32 @@ export function LandingV2() {
             <p className="v2-note">Tudo isso chega em peças. Nenhuma tem a medida da sua oferta.</p>
           </Reveal>
         </section>
+
+        {/* ---------- 03 THE BUILD (segunda transição: construção → completion) ---------- */}
+        {/* Trilha de scroll: o texto é mínimo de propósito — quem fala aqui é o objeto. */}
+        <section className="v2-build" ref={build}>
+          <div className="v2-build__stick wrap">
+            <span className="label">03 — The build</span>
+            {phase === "COMPLETE" ? (
+              <p className="v2-build__line">
+                7 days.
+                <br />
+                One build.
+              </p>
+            ) : (
+              <p className="v2-build__line">
+                <span className="num">{String(Math.min(7, locked + 1)).padStart(2, "0")}</span>
+                <br />
+                <span className="v2-build__dim">{STAGES[Math.min(6, locked)]}</span>
+              </p>
+            )}
+            <p className="v2-note v2-build__note">Uma peça por dia, na medida da sua oferta. Na sétima, o conjunto fecha.</p>
+          </div>
+        </section>
       </div>
 
       <footer className="v2-end wrap">
-        <p className="caption">Fim do protótipo — Fase 2 (hero + BUILD CORE + primeira transição).</p>
+        <p className="caption">Fim do protótipo — Fase 3 (hero + BUILD CORE + construção → completion).</p>
         <Link className="btn btn--quiet" href="/">
           Ver a landing atual
         </Link>

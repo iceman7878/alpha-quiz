@@ -37,7 +37,9 @@ export const BuildCore = forwardRef<CoreApi, { className?: string }>(function Bu
   useImperativeHandle(ref, () => ({
     setProgress(p) {
       progress.current = p;
-      box.current?.style.setProperty("--core-p", String(p));
+      // Pôsteres empilhados: planta → acúmulo → sistema fechado.
+      box.current?.style.setProperty("--core-b", String(Math.min(1, p)));
+      box.current?.style.setProperty("--core-c", String(Math.min(1, Math.max(0, (p - 1.6) / 1.2))));
       if (fixed.current === null) core.current?.setProgress(p);
     },
   }));
@@ -96,6 +98,7 @@ export const BuildCore = forwardRef<CoreApi, { className?: string }>(function Bu
       {/* Pôster: mesmo objeto, renderizado da própria cena. Placeholder do WebGL e versão estática. */}
       <img className="core__poster core__poster--a" src="/v2/core-0.webp" alt="" decoding="async" />
       <img className="core__poster core__poster--b" src="/v2/core-1.webp" alt="" decoding="async" loading="lazy" />
+      <img className="core__poster core__poster--c" src="/v2/core-2.webp" alt="" decoding="async" loading="lazy" />
       {mode === "webgl" && <canvas ref={canvas} className="core__canvas" />}
     </div>
   );
