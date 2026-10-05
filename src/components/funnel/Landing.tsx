@@ -9,7 +9,7 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import { OFFER } from "@/config";
 import { Arrow, Reveal } from "../ui";
 import { BuildDemo } from "./BuildDemo";
-import { BuiltList, Faq, ForWho, MethodAxis, Offer, SecHead } from "./Sections";
+import { BuiltList, Chains, Faq, ForWho, MethodAxis, Offer, SecHead } from "./Sections";
 
 export function Landing(props: { onStart: () => void; onSaved?: () => void }) {
   const demo = useRef<HTMLDivElement>(null);
@@ -92,8 +92,9 @@ export function Landing(props: { onStart: () => void; onSaved?: () => void }) {
           </h2>
         </Reveal>
         <Reveal i={1} className="pitch__body">
-          <p>Mais um vídeo, mais um curso, mais uma ideia salva. Nada disso chega ao mercado.</p>
+          <Chains />
           <p className="pitch__alt">7 dias. 1 construção. Execução real.</p>
+          <p>Cada dia termina com um entregável. O que você constrói hoje é a base de amanhã.</p>
         </Reveal>
       </section>
 
@@ -105,7 +106,9 @@ export function Landing(props: { onStart: () => void; onSaved?: () => void }) {
 
       {/* ---------- O QUE VOCÊ CONSTRÓI ---------- */}
       <section className="block wrap">
-        <SecHead n={2} label="O resultado" title="No final, você construiu:" />
+        <SecHead n={2} label="O resultado" title="No final, você construiu:">
+          <p>Oito partes de uma oferta real. Juntas, viram o seu First Market Test.</p>
+        </SecHead>
         <BuiltList />
       </section>
 

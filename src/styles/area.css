@@ -1093,6 +1093,15 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Telas estreitas: rótulo na vertical, inteiro, em vez de cortado. */
+@media (max-width: 559px) {
+  .meter7__label {
+    justify-self: center;
+    overflow: visible;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+  }
+}
 .meter7__cells li.is-on .meter7__label {
   color: var(--text-2);
 }

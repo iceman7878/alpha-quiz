@@ -99,6 +99,19 @@ $$;
 revoke all on function public.user_id_by_email(text) from public, anon, authenticated;
 grant execute on function public.user_id_by_email(text) to service_role;
 
+-- ---------- eventos do checkout ----------
+-- Idempotência do webhook: cada (transação, tipo) é processado uma vez. Só o servidor acessa.
+create table if not exists public.checkout_events (
+  id         text primary key,          -- "<transação>:approved" | "<transação>:revoked"
+  created_at timestamptz not null default now(),
+  txn        text not null,
+  kind       text not null,
+  status     text,
+  email      text
+);
+alter table public.checkout_events enable row level security;
+revoke all on public.checkout_events from anon, authenticated;
+
 -- ---------- CRM ----------
 -- Quem comprou → quem executou → quem avançou.
 create or replace view public.crm_build as

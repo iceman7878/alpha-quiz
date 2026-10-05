@@ -20,7 +20,7 @@ npm run build    # build de produção
 | `NEXT_PUBLIC_META_PIXEL_ID` | ID do Meta Pixel. Vazio = pixel desligado. |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Projeto Supabase (Settings → API). Sem elas, `/build` roda em modo demonstração só em desenvolvimento ou com `NEXT_PUBLIC_DEMO=1` (usar apenas no ambiente Preview da Vercel). |
 | `SUPABASE_SERVICE_ROLE_KEY` | Chave service role — só servidor. Grava leads e cria membros. |
-| `CHECKOUT_WEBHOOK_SECRET` | Token do webhook do checkout. |
+| `CHECKOUT_WEBHOOK_SECRET`, `CHECKOUT_SIGNATURE_SECRET`, `CHECKOUT_SIGNATURE_HEADER`, `CHECKOUT_SIGNATURE_ALGO`, `CHECKOUT_PRODUCT_IDS` | Webhook do checkout: token, assinatura oficial do provider e produtos aceitos. Sem todas, o webhook responde 503 e não libera ninguém. |
 | `NEXT_PUBLIC_SITE_URL` | Domínio final, usado no link do convite. |
 | `NEXT_PUBLIC_MENTORSHIP_URL` | Link da aplicação para a mentoria. |
 | `LEAD_WEBHOOK_URL` | (Opcional) Cópia do lead para outro destino (Make, Zapier, ManyChat…). |
@@ -92,6 +92,8 @@ Visão `crm_build`: quem comprou → dias concluídos → nível (só pelo paine
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role key (secreta) |
 | `CHECKOUT_WEBHOOK_SECRET` | um texto aleatório longo |
+| `CHECKOUT_SIGNATURE_SECRET` / `_HEADER` / `_ALGO` | segredo de assinatura do provider, header onde ela chega, `sha256` ou `sha1` |
+| `CHECKOUT_PRODUCT_IDS` | id(s) do produto ALPHA LAUNCH no checkout |
 | `NEXT_PUBLIC_SITE_URL` | `https://<dominio>` |
 | `NEXT_PUBLIC_CHECKOUT_URL` | link do checkout |
 | `NEXT_PUBLIC_META_PIXEL_ID` | ID do pixel |
@@ -111,7 +113,9 @@ Cadastrar o webhook na plataforma: `https://<dominio>/api/checkout?token=<CHECKO
 | Recompra de quem já tem conta | `access_status = active` (sem novo convite; entra ou recupera a senha) |
 | Reembolso / chargeback / cancelamento | `access_status = blocked` — perde o acesso ao conteúdo e aos dados; nada é apagado |
 
-A plataforma ainda não foi escolhida: o webhook reconhece os formatos mais comuns (e-mail, nome, telefone, status, `sck`). **Validar com um evento de teste** da plataforma escolhida.
+Só libera acesso com: token + assinatura HMAC válida do corpo bruto + produto em `CHECKOUT_PRODUCT_IDS` + status reconhecido + id de transação. Cada transação/tipo é processado uma vez (tabela `checkout_events` — rodar o `schema.sql` atualizado).
+
+A plataforma ainda não foi escolhida: o webhook reconhece os formatos mais comuns (e-mail, nome, telefone, status, transação, produto, `sck`). **Não é produção até ser validado com eventos de teste reais** da plataforma escolhida — inclusive o formato exato da assinatura (alguns providers assinam com timestamp ou usam token em vez de HMAC; ajustar `validSignature` em `src/app/api/checkout/route.ts`). O evento `Purchase` do Pixel entra junto com o checkout real.
 
 ### 4. Teste de ponta a ponta (depois de configurar)
 

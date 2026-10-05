@@ -563,7 +563,7 @@ export const DAYS: Day[] = [
     objective: "Sair com um caminho de aquisição, um canal, o mapa de onde estão as suas primeiras 30 pessoas e 3 conteúdos prontos para publicar.",
     idea: "Clientes não te encontram. Você vai até onde o problema já está sendo conversado.",
     principle: [
-      "Uma oferta que ninguém vê não existe. Distribuição é o trabalho de colocar a sua mensagem diante das pessoas certas — e, no começo, isso não exige anúncio nem seguidores.",
+      "Distribuição não é só conteúdo. É colocar a oferta diante das pessoas certas — por conteúdo, por abordagem direta ou por parceiros. Uma oferta que ninguém vê não existe. Distribuição é o trabalho de colocar a sua mensagem diante das pessoas certas — e, no começo, isso não exige anúncio nem seguidores.",
       "O primeiro objetivo não é viralizar. É conversar com as 10 primeiras pessoas que podem comprar. Dez conversas boas ensinam mais sobre a sua oferta do que dez mil visualizações — e é delas que sai a primeira venda.",
       "Existem três caminhos para chegar até essas pessoas. Você vai escolher um — não os três. Dividir a energia entre três canais na primeira semana é o jeito mais comum de não fazer nenhum direito.",
     ],
@@ -610,9 +610,17 @@ export const DAYS: Day[] = [
         },
       },
       {
-        title: "First 10: de 30 para 10",
-        text: "Da lista de 30, escolha 10 com três critérios: a pessoa tem o problema (você viu um sinal), você consegue falar com ela esta semana e ela pode pagar. Essas 10 são a sua lista de abordagem do DAY 07.",
-        after: "First 10 é uma sequência: encontrar 30 → selecionar 10 → abordar → conversar → apresentar → follow-up. Hoje você faz as duas primeiras. Amanhã, o resto.",
+        title: "First 10 — Parte 1",
+        text: "Hoje você prepara as 10 primeiras conversas. Amanhã, no DAY 07, você faz.",
+        points: [
+          "Encontrar 30 — nomes reais, com um sinal de que têm o problema.",
+          "Selecionar 10 — tem o problema, você consegue falar com ela esta semana, ela pode pagar.",
+          "Preparar a abordagem — uma mensagem com contexto, adaptada para cada pessoa. Nada de texto em massa.",
+          "Conversar — o objetivo da primeira troca é entender o problema, não vender.",
+          "Apresentar — a oferta só entra depois que a pessoa confirmou o problema.",
+          "Registrar — cada nome, data, resposta e próximo passo na planilha First 10.",
+        ],
+        after: "Hoje: as três primeiras etapas. As 10 selecionadas são a sua lista de abordagem do DAY 07.",
       },
       {
         title: "Conteúdo como aquisição",

@@ -5,10 +5,9 @@ import { useState, type CSSProperties } from "react";
 import { AreaFallback, BuildStack, FirstMarketTest, Shell, useArea } from "@/components/area";
 import { Arrow, screenTransition } from "@/components/ui";
 import { MENTORSHIP_URL } from "@/config";
-import { LEVELS, SCORE_QUESTIONS, computeLevel, type Level } from "@/lib/build";
+import { LEVELS, SCORE_CRITERIA, SCORE_QUESTIONS, computeLevel, type Level } from "@/lib/build";
 import { saveScore } from "@/lib/store";
 
-const CRITERIA = ["Direção", "Problema", "Oferta", "MVP", "Posição", "Distribuição", "Mercado"];
 const SHOUT: Record<Level, string> = { 1: "You started.", 2: "You built.", 3: "You shipped." };
 
 export default function ScorePage() {
@@ -59,7 +58,7 @@ export default function ScorePage() {
 
           <div className="meter7 enter" style={{ "--i": 6 } as CSSProperties}>
             <ol className="meter7__cells" aria-label={`${result.score} de 7 critérios`}>
-              {CRITERIA.map((c, i) => (
+              {SCORE_CRITERIA.map((c, i) => (
                 <li key={c} className={yes[i] ? "is-on" : ""} style={{ "--i": i } as CSSProperties}>
                   <span className="meter7__bar" aria-hidden />
                   <span className="meter7__label">

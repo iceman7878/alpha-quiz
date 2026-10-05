@@ -24,7 +24,13 @@ export function normalize(body: unknown) {
   const status = pick(f, /(status|event|webhook_event_type|order_status|evento)$/);
   // sck = "<rota>-<respostas>", repassado pelo quiz no link do checkout.
   const sck = pick(f, /(^|\.)(sck|src|tracking\.source|utm_content)$/, /^[a-z]+-\d+$/);
-  return { email, nome, whatsapp, status, sck };
+  // Id da transação/pedido (idempotência) e do produto/oferta (só o ALPHA LAUNCH libera acesso).
+  const txn = pick(f, /(^|\.)(transaction|transaction_id|order_id|order_ref|sale_id|purchase\.id|order\.id|payment_id|charge_id)$/);
+  const products = Object.entries(f)
+    .filter(([k]) => /(product|produto|offer|oferta|sku|plan|item)s?(\.\d+)?\.?(id|code|codigo|sku|ucode)$|(^|\.)(sku|product_id|offer_id|offer_code)$/.test(k))
+    .map(([, v]) => v.trim())
+    .filter(Boolean);
+  return { email, nome, whatsapp, status, sck, txn, products };
 }
 
 export const APPROVED = /approved|aprovad|paid|pago|complete|conclu|purchase_approved|order_approved/i;

@@ -34,7 +34,7 @@ export function MethodAxis(props: { tasks?: boolean }) {
           <div className="axis__main">
             <span className="axis__name">{d.name}</span>
             {props.tasks && <p className="axis__task">{d.task}</p>}
-            <p className="axis__out">→ {d.output}</p>
+            <p className="axis__out">{props.tasks ? `Entregável — ${d.output}` : `→ ${d.output}`}</p>
           </div>
         </Reveal>
       ))}
@@ -42,43 +42,54 @@ export function MethodAxis(props: { tasks?: boolean }) {
   );
 }
 
-export const BUILT = [
-  "Direção",
-  "Problema",
-  "Oferta",
-  "MVP",
-  "Posicionamento",
-  "Distribuição",
-  "First 10",
-  "Plano de lançamento",
-  "First Market Test",
-];
+/** O ciclo de consumo × o caminho de construção. */
+export function Chains(props: { loop?: [string, string]; path?: [string, string] }) {
+  const [loopLabel, loop] = props.loop ?? ["Hoje", "curso → conteúdo → ajuste → ferramenta → mais conteúdo"];
+  const [pathLabel, path] = props.path ?? ["No 7-Day Build", "direção → problema → oferta → MVP → mercado"];
+  return (
+    <div className="chains">
+      <p className="chains__row is-loop">
+        <span className="label">{loopLabel}</span>
+        <span>{loop}</span>
+      </p>
+      <p className="chains__row">
+        <span className="label">{pathLabel}</span>
+        <span>{path}</span>
+      </p>
+    </div>
+  );
+}
 
-/** O que existe no final dos 7 dias. */
+export const BUILT = ["DIRECTION", "PROBLEM", "OFFER", "MVP", "POSITION", "DISTRIBUTION", "FIRST 10", "LAUNCH"];
+
+/** O que existe no final dos 7 dias: as 8 partes e o documento que as reúne. */
 export function BuiltList() {
   return (
     <ol className="built">
       {BUILT.map((b, i) => (
-        <Reveal as="li" key={b} i={i % 3} className={`built__item${i === BUILT.length - 1 ? " is-final" : ""}`}>
+        <Reveal as="li" key={b} i={i % 3} className="built__item">
           <span className="num">{pad(i + 1)}</span>
           <span>{b}</span>
         </Reveal>
       ))}
+      <Reveal as="li" className="built__item is-final">
+        <span className="num">=</span>
+        <span>First Market Test</span>
+      </Reveal>
     </ol>
   );
 }
 
 const FOR = [
-  "Quem quer construir algo próprio.",
-  "Quem tem ideias, mas não consegue transformar em execução.",
-  "Quem quer testar uma oferta antes de passar meses construindo.",
-  "Quem quer aprender a encontrar e abordar os primeiros potenciais clientes.",
+  "Quem quer construir algo real.",
+  "Quem tem uma direção, mas não sabe transformar em oferta.",
+  "Quem quer testar antes de passar meses construindo.",
 ];
 const NOT_FOR = [
-  "Quem quer apenas consumir mais conteúdo.",
-  "Quem procura fórmula de dinheiro rápido.",
-  "Quem não pretende executar.",
-  "Quem quer construir um produto complexo antes de validar.",
+  "Quem procura renda garantida.",
+  "Quem quer fórmula de enriquecimento.",
+  "Quem quer apenas consumir aulas.",
+  "Quem espera que a ALPHA faça a execução por ele.",
 ];
 
 export function ForWho() {
@@ -106,11 +117,12 @@ export function ForWho() {
 
 const INCLUDED = [
   "7 dias de execução",
-  "Método e lições curtas, em leitura contínua",
+  "Método e lições",
   "Exemplos por rota",
   "Exercícios com salvamento automático",
   "Roteiro de descoberta",
-  "Roteiros de abordagem e respostas a objeções",
+  "Scripts de abordagem",
+  "Respostas a objeções",
   "First 10",
   "Build Stack",
   "Build Score",
@@ -149,23 +161,17 @@ export function Offer(props: { cta: ReactNode; note?: ReactNode; route?: string 
 const FAQ: { q: string; a: string }[] = [
   {
     q: "Preciso saber programar?",
-    a: "Não. No 7-Day Build, MVP é a menor versão capaz de entregar o resultado — você define e prepara a primeira entrega com o que já existe: documento, planilha, ferramenta pronta, serviço simples. Nada de código.",
+    a: "Não. O DAY 04 serve para definir o menor MVP capaz de entregar o resultado. Programar não é requisito.",
   },
+  { q: "Quanto tempo leva?", a: "Reserve cerca de 30–60 minutos por dia. O progresso é salvo." },
   {
-    q: "Quanto tempo preciso por dia?",
-    a: "Reserve cerca de 30–60 minutos por dia. É uma referência, não uma regra: o progresso fica salvo e você navega livremente entre os dias.",
+    q: "E se eu não tiver uma ideia?",
+    a: "O quiz indica uma rota. No DAY 01 você transforma isso em uma direção concreta.",
   },
-  {
-    q: "E se eu ainda não tiver uma ideia?",
-    a: "O quiz indica a rota que combina com o que você tem hoje. O DAY 01 parte daí: três candidatas, cinco filtros e uma direção para testar — com exemplos para cada rota.",
-  },
-  {
-    q: "É um curso?",
-    a: "Não. É um sprint de execução. Cada dia tem uma lição curta, exemplos, um exercício e um entregável. Você termina com um plano construído por você, não com horas de aula assistidas.",
-  },
+  { q: "É um curso?", a: "Não. É um sprint de execução. Cada dia termina com um entregável." },
   {
     q: "O que acontece depois dos 7 dias?",
-    a: "Você faz o Build Score e recebe o seu First Market Test: o documento com tudo o que construiu, da direção à primeira mensagem — e o próximo movimento definido.",
+    a: "Você termina com seu Build Score e seu First Market Test, além de um próximo movimento claro.",
   },
   {
     q: "Como recebo acesso?",

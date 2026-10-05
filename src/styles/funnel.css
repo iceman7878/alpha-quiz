@@ -609,6 +609,7 @@
   .block > .faq,
   .block > .seq10,
   .block > .ctx,
+  .block > .chapters,
   .block > .reveal:not(.sechead) {
     margin-left: 16%;
   }
@@ -627,6 +628,9 @@
   line-height: var(--lh-tight);
   letter-spacing: var(--tr-display);
   overflow-wrap: anywhere;
+}
+.pitch__problem--long {
+  font-size: clamp(32px, 5.6vw, 88px);
 }
 .pitch__problem span {
   color: var(--text-3);
@@ -650,6 +654,26 @@
   .pitch__body {
     margin-left: 50%;
   }
+}
+
+/* consumo × construção */
+.chains {
+  display: grid;
+  gap: var(--s-4);
+}
+.chains__row {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding-left: var(--s-4);
+  border-left: var(--bw) solid var(--osso);
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1.5;
+}
+.chains__row.is-loop {
+  border-left-color: var(--line);
+  color: var(--text-3);
 }
 
 /* método: eixo vertical (gramática do Build Stack) */
@@ -744,6 +768,7 @@
   color: var(--text-3);
 }
 .built__item.is-final {
+  grid-column: 1 / -1;
   border-bottom-color: var(--osso);
   font-weight: var(--w-regular);
 }
@@ -1225,4 +1250,66 @@
   font-size: var(--t-h2);
   font-weight: var(--w-light);
   letter-spacing: var(--tr-heading);
+}
+
+/* resultado: a ordem de cada dia */
+.chapters ol {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3) var(--s-5);
+  margin: 0 0 var(--s-7);
+  padding: 0;
+  list-style: none;
+  max-width: 820px;
+}
+.chapters li {
+  display: flex;
+  gap: var(--s-3);
+  align-items: baseline;
+  padding-bottom: var(--s-2);
+  border-bottom: var(--bw) solid var(--line-soft);
+  font-size: var(--t-caption);
+  font-weight: var(--w-medium);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+}
+.chapters .num {
+  font-size: 12px;
+  font-weight: var(--w-regular);
+  color: var(--text-3);
+}
+@media (min-width: 900px) {
+  .chapters ol {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* resultado: primeiras 30 nas outras rotas */
+.first30 {
+  display: grid;
+  gap: var(--s-3);
+  margin-top: var(--s-6);
+}
+.first30 dl {
+  display: grid;
+  gap: var(--s-4);
+  margin: 0;
+  max-width: 820px;
+}
+.first30 dt {
+  font-size: var(--t-small);
+  color: var(--text-2);
+}
+.first30 dd {
+  margin: var(--s-1) 0 0;
+  max-width: 60ch;
+  color: var(--text-3);
+  font-size: var(--t-small);
+  line-height: 1.6;
+}
+@media (min-width: 900px) {
+  .first30 dl {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-6);
+  }
 }

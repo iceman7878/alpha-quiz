@@ -6,13 +6,14 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { OFFER } from "@/config";
-import { personalLine, type Route } from "@/lib/quiz";
+import { ROUTES, personalLine, type Route } from "@/lib/quiz";
 import { track } from "@/lib/tracking";
 import { Arrow, Reveal, RouteMap, TwoDoors } from "../ui";
-import { Faq, ForWho, MethodAxis, Offer, SecHead } from "./Sections";
+import { Chains, Faq, ForWho, MethodAxis, Offer, SecHead } from "./Sections";
 import type { Lead } from "./Steps";
 
-const FIRST10 = ["Encontrar 30", "Selecionar 10", "Abordar", "Conversar", "Apresentar", "Follow-up"];
+const FIRST10 = ["Encontrar 30", "Selecionar 10", "Abordar", "Conversar", "Apresentar", "Follow-up", "Medir"];
+const CHAPTERS = ["The idea", "The principle", "The method", "See it", "Field note", "Your move", "Your output", "Next move"];
 
 export function Result(props: { route: Route; answers: number[]; lead: Lead | null; checkoutHref: string; onRestart: () => void }) {
   const { route, lead } = props;
@@ -107,29 +108,39 @@ export function Result(props: { route: Route; answers: number[]; lead: Lead | nu
       {/* ---------- O PROBLEMA ---------- */}
       <section className="pitch wrap">
         <Reveal>
-          <h2 className="pitch__problem">
-            Você não precisa de mais conteúdo.
+          <h2 className="pitch__problem pitch__problem--long">
+            Você pode passar meses construindo algo
             <br />
-            <span>Precisa colocar algo no mercado.</span>
+            <span>sem descobrir se alguém queria aquilo.</span>
           </h2>
         </Reveal>
         <Reveal i={1} className="pitch__body">
-          <p>
-            O ciclo comum: consumir, planejar, construir por meses — e só então descobrir se alguém quer. O ALPHA Launch
-            inverte a ordem.
-          </p>
+          <Chains
+            loop={["O ciclo comum", "consumir → construir sem mercado → descobrir tarde demais"]}
+            path={["O ALPHA Launch", "construir → testar → ouvir o mercado"]}
+          />
           <p className="pitch__alt">7 dias. 1 construção. Execução real.</p>
         </Reveal>
       </section>
 
       {/* ---------- O ALPHA LAUNCH ---------- */}
       <section className="block wrap">
-        <SecHead n={2} label="O ALPHA Launch" title="Um sprint de execução, não um curso.">
+        <SecHead n={2} label="O ALPHA Launch" title="7 dias. 7 construções. 1 entregável por dia.">
           <p>
-            Cada dia tem uma lição curta, exemplos da sua rota, um exercício e um entregável. O que você escreve fica salvo
-            e vira a base do dia seguinte.
+            Um sprint de execução, não um curso. Todo dia segue a mesma ordem — da ideia ao entregável. O que você escreve
+            fica salvo e vira a base do dia seguinte.
           </p>
         </SecHead>
+        <Reveal className="chapters">
+          <ol>
+            {CHAPTERS.map((c, i) => (
+              <li key={c}>
+                <span className="num">{String(i + 1).padStart(2, "0")}</span>
+                {c}
+              </li>
+            ))}
+          </ol>
+        </Reveal>
         <Reveal i={1}>
           <DayPreview />
         </Reveal>
@@ -157,6 +168,19 @@ export function Result(props: { route: Route; answers: number[]; lead: Lead | nu
         <Reveal className="ctx__day">
           <span className="label">Onde estão as primeiras 30 pessoas na sua rota</span>
           <p>{route.first30}</p>
+        </Reveal>
+        <Reveal className="first30">
+          <span className="label">Nas outras rotas</span>
+          <dl>
+            {Object.values(ROUTES)
+              .filter((r) => r.key !== route.key)
+              .map((r) => (
+                <div key={r.key}>
+                  <dt>{r.name}</dt>
+                  <dd>{r.first30}</dd>
+                </div>
+              ))}
+          </dl>
         </Reveal>
       </section>
 

@@ -21,7 +21,7 @@ Funil de quiz low ticket da ALPHA Enterprises, rodado no Instagram do Victor com
 ## 7-Day Build (cada dia gera um entregável)
 DAY 01 FIND (direção) · DAY 02 PROBLEM (problema) · DAY 03 OFFER (oferta) · DAY 04 MVP (menor versão que entrega o resultado — definir, não programar) · DAY 05 POSITION (headline, promessa, mensagem, CTA) · DAY 06 DISTRIBUTE (3 conteúdos, 3 hooks, CTA, canal) · DAY 07 LAUNCH (publicar)
 
-**BUILD SCORE** no DAY 07: 7 critérios sim/não (oferta, MVP, página, distribuição, leads, primeira venda, métricas) → BUILD 01 (começou), BUILD 02 (construiu), BUILD 03 (colocou no mercado). É dado de CRM para segmentar, não catraca: BUILD 03 recebe CTA direto para aplicar à ALPHA Mentorship; os demais entram em sequências diferentes. Tela final "BUILD COMPLETE" → [Aplicar para a ALPHA].
+**BUILD SCORE** no DAY 07: 7 critérios sim/não (oferta, MVP, página/posicionamento, distribuição, conversas, primeira venda/validação, métricas) → BUILD 01 (começou), BUILD 02 (construiu = oferta + MVP), BUILD 03 (colocou no mercado = oferta + conversas reais + ≥5 critérios). É dado de CRM para segmentar, não catraca: BUILD 03 recebe CTA direto para aplicar à ALPHA Mentorship; os demais entram em sequências diferentes. Tela final "BUILD COMPLETE" → [Aplicar para a ALPHA].
 
 ## Entregáveis
 1. **Quiz** (mobile-first, Next.js), deploy na Vercel (confirmar com o Victor antes), Meta Pixel + captura de UTM + captura de lead (`/api/lead` → tabela `leads`) — FEITO
@@ -53,4 +53,5 @@ body { background: linear-gradient(180deg, var(--campo-top), var(--campo-bottom)
 Design aprovado. Daqui em diante: polish + conversão + operação do funil. Evitar redesign e mudanças grandes no ALPHA LAUNCH.
 
 - **Duas portas / "A porta vazia"** (`TwoDoors` em `src/components/ui.tsx`): elemento especial, só em dois lugares — seção do resultado e abertura do DAY 07. Não usar em hero, quiz, outros dias ou peças novas; perde força se repetir.
+- Webhook do checkout (`/api/checkout`) fica fechado (503) até ter token + assinatura do provider + `CHECKOUT_PRODUCT_IDS`; idempotente via tabela `checkout_events`. Não é produção até validar com eventos reais da plataforma escolhida. `Purchase` do Pixel entra com o checkout real.
 - Narrativa da área: DAY 01 "Agora começou." → DAY 02–06 construção → DAY 07 "Hoje você entra pela porta vazia."

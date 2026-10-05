@@ -110,29 +110,37 @@ export function fmtText(f: Fmt, nome?: string | null): string {
   return out.join("\n");
 }
 
-/** Build Score: 7 critérios objetivos, respondidos no DAY 07. */
+/** Build Score: 7 critérios objetivos, respondidos no DAY 07. Diagnóstico e segmentação — não é catraca.
+ *  A ordem segue o caminho real: construir (0–3) → mercado (4–6). Mudou de significado em out/2026;
+ *  `score_answers` antigos não são recalculados — o nível só muda quando a pessoa responde de novo. */
 export const SCORE_QUESTIONS = [
-  "Você definiu uma direção?",
-  "Você escolheu um problema específico?",
-  "Você tem uma oferta escrita?",
+  "Sua oferta está escrita — para quem, resultado, mecanismo e preço?",
   "Seu MVP está definido?",
-  "Seu posicionamento está pronto?",
-  "Você definiu como distribuir?",
-  "Você colocou a oferta no mercado?",
+  "Sua página ou posicionamento está pronto para mostrar?",
+  "Você definiu como distribuir — caminho, canal e onde estão as pessoas?",
+  "Você abordou pessoas e teve as primeiras conversas?",
+  "Você fez a primeira venda ou recebeu uma validação real (pedido, pré-venda, “quero”)?",
+  "Você definiu a métrica e revisou os números?",
 ];
 
+/** Rótulos curtos dos critérios, na mesma ordem. */
+export const SCORE_CRITERIA = ["Oferta", "MVP", "Posição", "Distribuição", "Conversas", "Validação", "Métricas"];
+
 export const LEVELS = {
-  1: { code: "BUILD 01", title: "Você começou.", text: "A base existe. O próximo passo é fechar os dias que ficaram abertos e publicar." },
-  2: { code: "BUILD 02", title: "Você construiu.", text: "A oferta existe. Falta o passo que transforma construção em ativo: colocar no mercado." },
+  1: { code: "BUILD 01", title: "Você começou.", text: "A base existe. O próximo passo é fechar a oferta e o MVP — sem eles, não há o que levar ao mercado." },
+  2: { code: "BUILD 02", title: "Você construiu.", text: "A oferta existe. Falta o passo que transforma construção em teste: abordar pessoas reais, conversar e medir." },
   3: { code: "BUILD 03", title: "Você colocou no mercado.", text: "You built something. Now let's build something bigger." },
 } as const;
 
 export type Level = keyof typeof LEVELS;
 
-/** yes[i] = resposta da pergunta i. BUILD 03 exige oferta no mercado. */
+/** yes[i] = resposta da pergunta i.
+ *  BUILD 03 = oferta escrita + conversas reais com o mercado + pelo menos 5 critérios.
+ *  BUILD 02 = oferta e MVP existem.
+ *  BUILD 01 = o resto. */
 export function computeLevel(yes: boolean[]): { score: number; level: Level } {
   const score = yes.filter(Boolean).length;
-  const launched = yes[SCORE_QUESTIONS.length - 1];
-  const level: Level = launched && score >= 6 ? 3 : score >= 4 ? 2 : 1;
+  const [offer, mvp, , , talked] = yes;
+  const level: Level = offer && talked && score >= 5 ? 3 : offer && mvp ? 2 : 1;
   return { score, level };
 }
