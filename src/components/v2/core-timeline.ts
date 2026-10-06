@@ -10,6 +10,12 @@ export const P_MAX = 3;
 
 export const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
+/** Acúmulo: cada peça de consumo chega na sua vez, ao longo de toda a seção 02 (sem tela morta). */
+export const PIECE_N = 6;
+export const pieceT = (P: number, i: number) => clamp01((P - (0.06 + i * 0.13)) / 0.2);
+/** Quantas peças de consumo já chegaram (sincroniza a lista "Cursos. Vídeos. …"). */
+export const arrivedAt = (P: number) => Array.from({ length: PIECE_N }).reduce<number>((n, _, i) => n + (pieceT(P, i) >= 0.5 ? 1 : 0), 0);
+
 /** 0→1 da construção. */
 export const buildT = (P: number) => clamp01((P - 1) / 1.5);
 /** 0→1 do fechamento. */

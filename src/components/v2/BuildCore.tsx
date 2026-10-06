@@ -59,8 +59,8 @@ export const BuildCore = forwardRef<CoreApi, { className?: string }>(function Bu
         const { createCore } = await import("./core-scene");
         if (!alive) return;
         const font = getComputedStyle(document.documentElement).getPropertyValue("--font-mono").trim() || "ui-monospace";
-        const small = innerWidth < 720;
-        const h = createCore(el, { font, dpr: Math.min(devicePixelRatio || 1, small ? 1.5 : 1.75), reduced: false, labelScale: small ? 1.6 : 1 });
+        const small = innerWidth < 900; // mesmo corte do CSS: composição mobile própria
+        const h = createCore(el, { font, dpr: Math.min(devicePixelRatio || 1, small ? 1.5 : 1.75), reduced: false, labelScale: small ? 1.75 : 1, compact: small });
         core.current = h;
         const q = new URLSearchParams(location.search).get("p");
         if (q !== null) {
@@ -96,9 +96,13 @@ export const BuildCore = forwardRef<CoreApi, { className?: string }>(function Bu
   return (
     <div ref={box} className={`core${live ? " is-live" : ""} ${props.className ?? ""}`} aria-hidden>
       {/* Pôster: mesmo objeto, renderizado da própria cena. Placeholder do WebGL e versão estática. */}
-      <img className="core__poster core__poster--a" src="/v2/core-0.webp" alt="" decoding="async" />
-      <img className="core__poster core__poster--b" src="/v2/core-1.webp" alt="" decoding="async" loading="lazy" />
-      <img className="core__poster core__poster--c" src="/v2/core-2.webp" alt="" decoding="async" loading="lazy" />
+      {/* Mobile tem enquadramento próprio (cotas à esquerda, pilha mais baixa): pôsteres próprios. */}
+      {[0, 1, 2].map((n) => (
+        <picture key={n}>
+          <source media="(max-width: 899px)" srcSet={`/v2/core-${n}-m.webp`} />
+          <img className={`core__poster core__poster--${"abc"[n]}`} src={`/v2/core-${n}.webp`} alt="" decoding="async" loading={n ? "lazy" : undefined} />
+        </picture>
+      ))}
       {mode === "webgl" && <canvas ref={canvas} className="core__canvas" />}
     </div>
   );

@@ -16,7 +16,7 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { STAGES, P_MAX, clamp01, buildT, closeT, slabT } from "./core-timeline";
+import { STAGES, P_MAX, clamp01, buildT, closeT, slabT, pieceT } from "./core-timeline";
 
 export type CoreHandle = {
   /** 0 planta · 1 acúmulo · 2.5 sete lâminas travadas · 3 sistema fechado. */
@@ -42,15 +42,29 @@ const ROD_Z = SLAB.d / 2 - 0.2;
 const COL_H = SLAB.gap * 6;
 const SLIDE = 2.4; // a lâmina entra pela direita, ao longo do rasgo
 
-// Peças soltas: tamanho errado, fora de esquadro. Determinístico (sem Math.random).
-const PIECES = [
-  { w: 1.55, d: 0.9, h: 0.12, x: -1.55, y: -1.05, z: 0.85, ry: 0.62, rz: 0.05, from: [-0.9, 0, 0] },
-  { w: 2.05, d: 0.7, h: 0.07, x: 0.55, y: -1.42, z: 1.35, ry: -0.38, rz: -0.03, from: [0.9, 0, 0.3] },
-  { w: 0.95, d: 1.1, h: 0.14, x: 2.25, y: -0.6, z: 0.4, ry: 0.95, rz: 0.08, from: [0.8, 0.2, 0] },
-  { w: 1.3, d: 0.6, h: 0.06, x: -2.05, y: 0.35, z: -0.35, ry: -0.72, rz: -0.06, from: [-0.8, 0.1, 0] },
-  { w: 1.75, d: 1.0, h: 0.1, x: 1.25, y: 1.05, z: -0.65, ry: 0.28, rz: 0.04, from: [0.7, 0.3, -0.2] },
-  { w: 1.1, d: 0.8, h: 0.09, x: -0.75, y: -1.85, z: -0.25, ry: -1.12, rz: 0.02, from: [0, -0.6, 0.4] },
+// Acúmulo: as peças de consumo caem umas sobre as outras numa pilha torta ao lado da coluna —
+// uma "falsa coluna": sem espinha, sem medida, cada uma num ângulo. Determinístico (sem Math.random).
+const PILE = { x: -0.55, z: 2.05 };
+const PIECE_DIMS = [
+  { w: 1.55, d: 0.9, h: 0.12, dx: 0, dz: 0, ry: 0.62, rz: 0.03 },
+  { w: 2.05, d: 0.7, h: 0.07, dx: 0.22, dz: -0.12, ry: -0.38, rz: -0.035 },
+  { w: 0.95, d: 1.1, h: 0.14, dx: -0.2, dz: 0.18, ry: 0.95, rz: 0.05 },
+  { w: 1.3, d: 0.6, h: 0.06, dx: 0.3, dz: 0.04, ry: -0.72, rz: -0.03 },
+  { w: 1.75, d: 1.0, h: 0.1, dx: -0.08, dz: -0.18, ry: 0.28, rz: 0.035 },
+  { w: 1.1, d: 0.8, h: 0.09, dx: 0.18, dz: 0.1, ry: -1.12, rz: -0.045 },
 ];
+// deslocamento lateral de cada etiqueta (alternado, ajustado à pilha)
+const LABEL_ALT = [-0.4, 0.5, -0.4, 0.5, -0.72, 0.62];
+type Piece = (typeof PIECE_DIMS)[number] & { x: number; y: number; z: number };
+/** Empilha a partir da base: cada peça apoiada na anterior. */
+function pile(base: number, gap: number): Piece[] {
+  let top = base;
+  return PIECE_DIMS.map((p) => {
+    const y = top + p.h / 2;
+    top = y + p.h / 2 + gap;
+    return { ...p, x: PILE.x + p.dx, y, z: PILE.z + p.dz };
+  });
+}
 
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 const easeIn = (t: number) => t * t * t;
@@ -152,8 +166,12 @@ const levelY = (i: number, settle: number) => {
   return -(gap * 6) / 2 + i * gap;
 };
 
-export function createCore(canvas: HTMLCanvasElement, opts: { font: string; dpr: number; reduced: boolean; labelScale?: number }): CoreHandle {
+export function createCore(canvas: HTMLCanvasElement, opts: { font: string; dpr: number; reduced: boolean; labelScale?: number; compact?: boolean }): CoreHandle {
   const ls = opts.labelScale ?? 1;
+  // compact (mobile): o objeto é cortado pela borda direita, então as cotas saem pela quina
+  // frontal esquerda; a pilha desce para ocupar o espaço entre o objeto e o texto.
+  const compact = !!opts.compact;
+  const PIECES = compact ? pile(-1.85, 0.1) : pile(-1.32, 0.05);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(opts.dpr);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -231,10 +249,11 @@ export function createCore(canvas: HTMLCanvasElement, opts: { font: string; dpr:
     const collar = new THREE.Mesh(collarGeo, metal);
     root.add(collar);
     // marca de cota: da quina frontal direita para fora, e o rótulo na ponta
-    const tickGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(SLAB.w / 2, 0, SLAB.d / 2), new THREE.Vector3(SLAB.w / 2 + 0.44, 0, SLAB.d / 2 + 0.12)]);
+    const tickGeo = new THREE.BufferGeometry().setFromPoints(compact ? [new THREE.Vector3(-SLAB.w / 2, 0, SLAB.d / 2), new THREE.Vector3(-SLAB.w / 2 - 0.16, 0, SLAB.d / 2 + 0.22)] : [new THREE.Vector3(SLAB.w / 2, 0, SLAB.d / 2), new THREE.Vector3(SLAB.w / 2 + 0.44, 0, SLAB.d / 2 + 0.12)]);
     const tick = new THREE.Line(tickGeo, new THREE.LineBasicMaterial({ color: OSSO, transparent: true, opacity: 0 }));
     root.add(tick);
     const tag = label(`${String(i + 1).padStart(2, "0")} ${name}`, opts.font, 0, ls);
+    if (compact) tag.center.set(1, 0.5); // texto alinhado à direita, encostado na cota
     root.add(tag);
     return { line, slab, mat, collar, tick, tag };
   });
@@ -306,7 +325,8 @@ export function createCore(canvas: HTMLCanvasElement, opts: { font: string; dpr:
 
       L.tick.position.y = y;
       (L.tick.material as THREE.LineBasicMaterial).opacity = 0.22 * draw;
-      L.tag.position.set(SLAB.w / 2 + 0.49, y, SLAB.d / 2 + 0.12);
+      if (compact) L.tag.position.set(-SLAB.w / 2 - 0.2, y, SLAB.d / 2 + 0.26);
+      else L.tag.position.set(SLAB.w / 2 + 0.49, y, SLAB.d / 2 + 0.12);
       const idle = 0.5 * (1 - arrive * 0.45);
       (L.tag.material as THREE.SpriteMaterial).opacity = draw * lerp(idle, 0.82, lock);
     });
@@ -320,17 +340,19 @@ export function createCore(canvas: HTMLCanvasElement, opts: { font: string; dpr:
     rodMetal.opacity = easeOut(seg(k, 0, 0.18));
     rodMetal.transparent = rodMetal.opacity < 1;
 
-    // Acúmulo: chega por um eixo só; na construção é retirado, peça por peça.
+    // Acúmulo: cada peça cai na pilha na sua vez; na construção a pilha é retirada, peça por peça.
     pieces.forEach(({ p, mesh, mat, tag }, i) => {
-      const t = easeOut(clamp01(arrive * 1.7 - i * 0.12));
-      const e = easeIn(clamp01((c - i * 0.035) / 0.2));
-      const k1 = 1 - t + e * 1.6;
-      mesh.position.set(p.x + p.from[0] * k1, p.y + p.from[1] * k1 - 0.35 * e, p.z + p.from[2] * k1);
+      const t = easeOut(pieceT(P, i));
+      const e = easeIn(clamp01((c - (PIECES.length - 1 - i) * 0.035) / 0.2)); // sai de cima para baixo
+      mesh.position.set(p.x - 1.4 * e, p.y + 0.85 * (1 - t) - 0.2 * e, p.z + 1.2 * e);
       mat.opacity = t * (1 - e);
       mat.transparent = mat.opacity < 1;
       mesh.visible = mat.opacity > 0.001;
-      tag.position.set(mesh.position.x + 0.08, mesh.position.y + p.h / 2 + 0.11, mesh.position.z + p.d / 2);
-      (tag.material as THREE.SpriteMaterial).opacity = 0.42 * mat.opacity;
+      // rótulo na borda frontal da própria peça, como etiqueta impressa
+      const f = p.d / 2 + 0.03;
+      const alt = LABEL_ALT[i]; // alterna o lado: etiquetas de camadas vizinhas não se sobrepõem
+      tag.position.set(mesh.position.x + Math.sin(p.ry) * f + alt, mesh.position.y, mesh.position.z + Math.cos(p.ry) * f);
+      (tag.material as THREE.SpriteMaterial).opacity = 0.5 * mat.opacity;
       tag.visible = mesh.visible;
     });
 
@@ -338,9 +360,14 @@ export function createCore(canvas: HTMLCanvasElement, opts: { font: string; dpr:
     const o = easeInOut(c);
     root.rotation.y = lerp(-0.18 + arrive * 0.22, -0.06, o);
     root.position.y = lerp(arrive * 0.18, 0, o) - 0.025 * settle;
-    const zoom = 1 + 0.2 * o;
-    if (camera.zoom !== zoom) {
+    // Escala: no hero o sistema aparece maior e cortado pela borda (uma primeira visão, não a obra
+    // inteira); recua para mostrar o acúmulo; cresce de novo enquanto ganha ordem.
+    const hero = 1 - easeInOut(seg(P, 0, 0.4));
+    const zoom = (1 + 0.2 * hero) * (1 + 0.2 * o);
+    const film = (compact ? -0.8 : -1.9) * hero;
+    if (camera.zoom !== zoom || camera.filmOffset !== film) {
       camera.zoom = zoom;
+      camera.filmOffset = film;
       camera.updateProjectionMatrix();
     }
   }

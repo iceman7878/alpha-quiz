@@ -20,7 +20,6 @@
   position: sticky;
   top: 0;
   height: 100svh;
-  margin-bottom: -100svh;
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
@@ -58,12 +57,21 @@
   transition: opacity var(--d-slow) var(--e-out);
 }
 
+/* A camada fixa não ocupa espaço: o conteúdo sobe por cima dela. (Margem negativa no irmão, não
+   na camada: assim o sticky para no fim da trilha e não invade o rodapé.) */
+.v2-pin + * {
+  margin-top: -100svh;
+}
+
+/* Mobile: composição própria. O objeto é dono da metade de cima da tela, grande e cortado pela
+   borda direita; o texto vive na metade de baixo. Ninguém atravessa o outro. */
 .v2-core {
-  width: 122vw;
-  right: -18vw;
-  top: calc(19svh - 61vw);
-  /* construção: o objeto desce para o centro livre acima do texto (segue o scroll, sem transição) */
-  transform: translateY(calc(var(--shift, 0) * 16svh));
+  width: 150vw;
+  right: -47vw;
+  top: calc(24svh - 75vw);
+  /* hero: sobe para não encostar no micro-texto; construção: desce para o centro livre acima
+     do texto. Os dois seguem o scroll, sem transição. */
+  transform: translateY(calc(var(--shift, 0) * 19svh - var(--hero, 1) * 9svh));
 }
 /* Mobile: o readout competiria com o objeto no mesmo canto; só aparece com espaço. */
 .v2-readout {
@@ -77,6 +85,9 @@
     right: -7vw;
     top: 50%;
     transform: translateY(-50%);
+  }
+  .v2-pin + * {
+    margin-top: -100svh;
   }
   .v2-readout {
     display: block;
@@ -151,6 +162,18 @@
   font-size: 15px;
   letter-spacing: 0;
 }
+@media (max-width: 899px) {
+  /* o hero inteiro cabe na metade de baixo: o objeto fica com a de cima */
+  .v2-hero {
+    gap: var(--s-5);
+  }
+  .v2-title {
+    font-size: min(11.6cqi, 13svh);
+  }
+  .v2-lead {
+    font-size: 18px;
+  }
+}
 @media (min-width: 900px) {
   .v2-title {
     font-size: min(7.4cqi, 14.5svh, 128px);
@@ -163,50 +186,74 @@
 }
 
 /* ---------- 02 problema ---------- */
+/* Mobile: painel fixo na metade de baixo, a seção é a trilha do acúmulo. */
 .v2-problem {
   position: relative;
   z-index: 1;
-  display: grid;
-  align-content: start;
-  gap: var(--s-7);
-  min-height: 150svh;
-  padding-top: 70svh; /* o hero sai da área do objeto antes das peças chegarem */
-  padding-bottom: var(--section);
+  height: 250svh;
+}
+.v2-problem__stick {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--s-5);
+  padding-bottom: clamp(28px, 7svh, 72px);
 }
 .v2-ch {
   display: block;
-  margin-bottom: var(--s-4);
+  margin-bottom: var(--s-3);
 }
 .v2-h2 {
   margin: 0;
   max-width: 12ch;
-  font-size: clamp(36px, 5.6vw, 84px);
+  font-size: clamp(32px, 5.6vw, 84px);
   font-weight: var(--w-light);
   line-height: var(--lh-tight);
   letter-spacing: var(--tr-display);
 }
 .v2-consumed {
-  display: grid;
-  gap: var(--s-1);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.42em;
   margin: 0;
   padding: 0;
   list-style: none;
-  color: var(--text-3);
-  font-size: clamp(22px, 2.6vw, 34px);
+  font-size: clamp(20px, 2.6vw, 34px);
   font-weight: var(--w-light);
   letter-spacing: var(--tr-heading);
-  line-height: 1.2;
+  line-height: 1.25;
+}
+/* a palavra acende quando a sua peça cai na pilha */
+.v2-consumed li {
+  color: var(--text-3);
+  opacity: 0.3;
+  transition: opacity var(--d-base) var(--e-out);
+}
+.v2-consumed li.is-on {
+  opacity: 1;
 }
 .v2-verdict {
   display: grid;
-  gap: var(--s-3);
-  padding-top: var(--s-5);
+  gap: var(--s-2);
+  padding-top: var(--s-4);
   border-top: var(--bw) solid var(--line);
   max-width: 34rem;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity var(--d-base) var(--e-out),
+    transform var(--d-base) var(--e-out);
+}
+.v2-verdict.is-on {
+  opacity: 1;
+  transform: none;
 }
 .v2-neq {
   margin: 0;
-  font-size: clamp(22px, 2.4vw, 30px);
+  font-size: clamp(20px, 2.4vw, 30px);
   font-weight: var(--w-regular);
   letter-spacing: var(--tr-heading);
 }
@@ -217,11 +264,37 @@
   line-height: var(--lh-body);
 }
 @media (min-width: 900px) {
+  /* Desktop: o texto corre à esquerda como antes; a seção inteira continua sendo a trilha. */
   .v2-problem {
-    padding-top: 30svh;
+    height: auto;
+    min-height: 160svh;
   }
-  .v2-problem > * {
+  .v2-problem__stick {
+    position: static;
+    height: auto;
+    display: grid;
+    align-content: start;
+    justify-content: stretch;
+    gap: var(--s-7);
+    padding-top: 30svh;
+    padding-bottom: var(--section);
+  }
+  .v2-problem__stick > * {
     max-width: 44%;
+  }
+  .v2-consumed {
+    display: grid;
+    gap: var(--s-1);
+    line-height: 1.2;
+  }
+  .v2-ch {
+    margin-bottom: var(--s-4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2-consumed li,
+  .v2-verdict {
+    transition: none;
   }
 }
 

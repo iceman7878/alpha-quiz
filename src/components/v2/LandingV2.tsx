@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { OFFER } from "@/config";
 import { Arrow, Reveal } from "../ui";
 import { BuildCore, type CoreApi } from "./BuildCore";
-import { STAGES, lockedAt, phaseAt, type Phase } from "./core-timeline";
+import { STAGES, arrivedAt, lockedAt, phaseAt, type Phase } from "./core-timeline";
 
 const CONSUMED = ["Cursos.", "Vídeos.", "Threads.", "Prompts.", "Ferramentas.", "Ideias."];
 
@@ -20,19 +20,22 @@ export function LandingV2() {
   const pin = useRef<HTMLDivElement>(null);
   const [phase, setPhase] = useState<Phase>("PLANTA");
   const [locked, setLocked] = useState(0);
+  const [arrived, setArrived] = useState(0);
+  const [verdict, setVerdict] = useState(false);
 
   useEffect(() => {
-    const el = problem.current?.querySelector("h2");
+    const sec = problem.current;
     const run = build.current;
-    if (!el || !run) return;
+    if (!sec || !run) return;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     let raf = 0;
     let last = -1;
     const read = () => {
       const vh = innerHeight;
-      const top = el.getBoundingClientRect().top;
-      // Ancorado no título do problema: começa quando ele entra pela base e termina a ~45% da tela.
-      let p = Math.min(1, Math.max(0, (vh - top) / (vh * 0.55)));
+      // Acúmulo: a seção 02 inteira é a trilha (0 → 1). Começa quando ela entra e termina quando
+      // a 03 começa a entrar — as peças chegam ao longo de todo o trecho, sem tela parada.
+      const s = sec.getBoundingClientRect();
+      let p = Math.min(1, Math.max(0, (vh * 0.85 - s.top) / Math.max(1, s.height - vh * 0.15)));
       // Construção: a trilha da seção 03 inteira (menos uma tela) leva de 1 a 3.
       const r = run.getBoundingClientRect();
       const q = Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - vh)));
@@ -44,8 +47,11 @@ export function LandingV2() {
       core.current?.setProgress(P);
       // No mobile o objeto desce para o centro durante a construção (só CSS usa).
       pin.current?.style.setProperty("--shift", String(Math.min(1, Math.max(0, (P - 1) / 0.5))));
+      pin.current?.style.setProperty("--hero", String(1 - Math.min(1, P / 0.4)));
       setPhase(phaseAt(P));
       setLocked(lockedAt(P));
+      setArrived(arrivedAt(P));
+      setVerdict(P >= 0.9);
     };
     const onScroll = () => {
       cancelAnimationFrame(raf);
@@ -114,22 +120,25 @@ export function LandingV2() {
         </section>
 
         {/* ---------- 02 THE PROBLEM (primeira transição) ---------- */}
-        <section className="v2-problem wrap" ref={problem}>
-          <Reveal>
-            <span className="label v2-ch">02 — The problem</span>
-            <h2 className="v2-h2">Você não precisa de mais informação.</h2>
-          </Reveal>
-          <ul className="v2-consumed">
-            {CONSUMED.map((t, i) => (
-              <Reveal as="li" key={t} i={i}>
-                {t}
-              </Reveal>
-            ))}
-          </ul>
-          <Reveal className="v2-verdict">
-            <p className="v2-neq">Consumo acumulado ≠ construção.</p>
-            <p className="v2-note">Tudo isso chega em peças. Nenhuma tem a medida da sua oferta.</p>
-          </Reveal>
+        {/* Cada palavra acende quando a sua peça cai na pilha: o texto e o objeto andam juntos. */}
+        <section className="v2-problem" ref={problem}>
+          <div className="v2-problem__stick wrap">
+            <Reveal>
+              <span className="label v2-ch">02 — The problem</span>
+              <h2 className="v2-h2">Você não precisa de mais informação.</h2>
+            </Reveal>
+            <ul className="v2-consumed">
+              {CONSUMED.map((t, i) => (
+                <li key={t} className={i < arrived ? "is-on" : undefined}>
+                  {t}
+                </li>
+              ))}
+            </ul>
+            <div className={`v2-verdict${verdict ? " is-on" : ""}`}>
+              <p className="v2-neq">Consumo acumulado ≠ construção.</p>
+              <p className="v2-note">Tudo isso chega em peças. Nenhuma tem a medida da sua oferta.</p>
+            </div>
+          </div>
         </section>
 
         {/* ---------- 03 THE BUILD (segunda transição: construção → completion) ---------- */}
@@ -156,7 +165,7 @@ export function LandingV2() {
       </div>
 
       <footer className="v2-end wrap">
-        <p className="caption">Fim do protótipo — Fase 3 (hero + BUILD CORE + construção → completion).</p>
+        <p className="caption">Fim do protótipo — Fase 3.5 (hero + BUILD CORE + construção → completion).</p>
         <Link className="btn btn--quiet" href="/">
           Ver a landing atual
         </Link>
