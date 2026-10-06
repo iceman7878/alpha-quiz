@@ -1,6 +1,6 @@
 "use client";
 
-// /v2 — Fases 2 e 3: HERO + BUILD CORE + PLANTA → ACÚMULO → CONSTRUÇÃO → COMPLETION.
+// /v2 — Fases 2–4: HERO + BUILD CORE (PLANTA → ACÚMULO → CONSTRUÇÃO → COMPLETION) + camada comercial.
 // Protótipo de direção visual. O core fica fixo (sticky) enquanto as seções passam.
 // Sem sequestro de scroll: o scroll é nativo; só a posição das seções vira progresso.
 
@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { OFFER } from "@/config";
 import { Arrow, Reveal } from "../ui";
 import { BuildCore, type CoreApi } from "./BuildCore";
+import { OfferV2 } from "./OfferV2";
 import { STAGES, arrivedAt, lockedAt, phaseAt, type Phase } from "./core-timeline";
 
 const CONSUMED = ["Cursos.", "Vídeos.", "Threads.", "Prompts.", "Ferramentas.", "Ideias."];
@@ -164,12 +165,8 @@ export function LandingV2() {
         </section>
       </div>
 
-      <footer className="v2-end wrap">
-        <p className="caption">Fim do protótipo — Fase 3.5 (hero + BUILD CORE + construção → completion).</p>
-        <Link className="btn btn--quiet" href="/">
-          Ver a landing atual
-        </Link>
-      </footer>
+      {/* ---------- 04–11: a venda como consequência da experiência ---------- */}
+      <OfferV2 cta={cta} />
     </div>
   );
 }
