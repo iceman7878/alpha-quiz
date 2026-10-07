@@ -154,20 +154,6 @@ export function OfferV2(props: { cta: ReactNode }) {
             </Reveal>
           ))}
         </div>
-        <Reveal className="v2-day8">
-          <p className="v2-day8__t">Ao final dos 7 dias, você tem:</p>
-          <ol className="v2-day8__list">
-            {BUILT.map((b, i) => (
-              <li key={b}>
-                <span className="num">{String(i + 1).padStart(2, "0")}</span>
-                {b}
-              </li>
-            ))}
-            <li className="is-sum">
-              <span className="num">=</span>First Market Test
-            </li>
-          </ol>
-        </Reveal>
       </section>
 
       {/* ---------- 07 OUTPUT: o valor está na densidade do que sai, não no custo diário ---------- */}
