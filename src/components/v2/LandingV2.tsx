@@ -7,6 +7,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { OFFER } from "@/config";
+import { BUILD_DAYS, decodeAnswers } from "@/lib/quiz";
 import { Arrow, Reveal } from "../ui";
 import { BuildCore, type CoreApi } from "./BuildCore";
 import { OfferV2 } from "./OfferV2";
@@ -23,6 +24,15 @@ export function LandingV2() {
   const [locked, setLocked] = useState(0);
   const [arrived, setArrived] = useState(0);
   const [verdict, setVerdict] = useState(false);
+  const [savedRoute, setSavedRoute] = useState<string | null>(null);
+
+  // Quem já fez o quiz volta direto para a rota salva (mesma chave do Quiz; /?r= abre o resultado).
+  useEffect(() => {
+    try {
+      const r = JSON.parse(localStorage.getItem("alpha_quiz") || "null")?.r;
+      if (typeof r === "string" && decodeAnswers(r)) setSavedRoute(r);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const sec = problem.current;
@@ -116,6 +126,11 @@ export function LandingV2() {
                 <span className="num">{OFFER.priceLabel}</span>
                 <span>Pagamento único · 3 perguntas para montar sua rota</span>
               </p>
+              {savedRoute && (
+                <Link className="btn btn--quiet" href={`/?r=${savedRoute}`}>
+                  Ver minha rota salva →
+                </Link>
+              )}
             </div>
           </div>
         </section>
@@ -158,6 +173,7 @@ export function LandingV2() {
                 <span className="num">{String(Math.min(7, locked + 1)).padStart(2, "0")}</span>
                 <br />
                 <span className="v2-build__dim">{STAGES[Math.min(6, locked)]}</span>
+                <span className="v2-build__out">{BUILD_DAYS[Math.min(6, locked)].output}</span>
               </p>
             )}
             <p className="v2-note v2-build__note">Uma peça por dia, na medida da sua oferta. Na sétima, o conjunto fecha.</p>

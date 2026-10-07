@@ -1,14 +1,19 @@
 "use client";
 
-// /v2 — Fase 4: a camada comercial depois do BUILD COMPLETE.
+// /v2 — Fase 4 consolidada: a camada comercial depois do BUILD COMPLETE.
 // A experiência não para para vender: o sistema que acabou de se montar ganha nome, mecanismo,
-// especificação, valor, risco, preço e porta final. Só fatos que o produto já entrega.
+// especificação, valor, encaixe, preço e porta final. Só fatos que o produto já entrega.
+// Da landing antiga vêm: o eixo dos 7 dias com o entregável, a frase "base de amanhã", as duas
+// cadeias, o BuildDemo (exemplo) e a porta em texto. Objeções práticas vivem só no FAQ.
 // O BUILD CORE não é tocado; aqui ele só reaparece como pôster (imagem já existente) ao lado do preço.
 
 import type { ReactNode } from "react";
 import { OFFER } from "@/config";
+import { BUILD_DAYS } from "@/lib/quiz";
+import { BuildDemo } from "../funnel/BuildDemo";
 import { Faq } from "../funnel/Sections";
 import { Reveal } from "../ui";
+import { STAGES } from "./core-timeline";
 
 const ROUTES = ["AI Service Builder", "Expertise Builder", "Backstage Builder", "Distribution Builder"];
 
@@ -30,7 +35,17 @@ const STEPS: { n: string; title: string; body: ReactNode }[] = [
   {
     n: "02",
     title: "7 dias. 1 entregável por dia.",
-    body: "Cerca de 30–60 minutos por dia. Cada dia termina com uma parte construída, e o progresso fica salvo.",
+    body: (
+      <ol className="v2-days">
+        {STAGES.map((name, i) => (
+          <li key={name}>
+            <span className="num">{String(i + 1).padStart(2, "0")}</span>
+            <span className="v2-days__name">{name}</span>
+            <span className="v2-days__out">→ {BUILD_DAYS[i].output}</span>
+          </li>
+        ))}
+      </ol>
+    ),
   },
   {
     n: "03",
@@ -85,13 +100,6 @@ const NOT_FOR = [
   "Quem espera que a ALPHA execute por ele.",
 ];
 
-const FRICTION: [string, string][] = [
-  ["Não precisa programar.", "O DAY 04 define o menor MVP. Definir, não programar."],
-  ["Não precisa ter uma ideia.", "O quiz indica a rota; o DAY 01 vira direção."],
-  ["Cabe na rotina.", "Cerca de 30–60 minutos por dia, com progresso salvo."],
-  ["Acesso por e-mail.", "Confirmada a compra, o link de acesso chega no seu e-mail."],
-];
-
 export function OfferV2(props: { cta: ReactNode }) {
   const action = (
     <div className="v2-cta">
@@ -110,6 +118,7 @@ export function OfferV2(props: { cta: ReactNode }) {
         </Reveal>
         <Reveal i={1} className="v2-sys__body">
           <p className="v2-sys__lead">Um sistema de 7 dias que transforma uma direção em uma oferta pronta para ir ao mercado.</p>
+          <p className="v2-note">Cada dia termina com um entregável. O que você constrói hoje é a base de amanhã.</p>
           <p className="v2-sys__manifest">Build, don&apos;t consume.</p>
         </Reveal>
       </section>
@@ -126,7 +135,7 @@ export function OfferV2(props: { cta: ReactNode }) {
               <span className="v2-step__n num">{s.n}</span>
               <div>
                 <p className="v2-step__t">{s.title}</p>
-                <p className="v2-step__b">{s.body}</p>
+                <div className="v2-step__b">{s.body}</div>
               </div>
             </Reveal>
           ))}
@@ -154,6 +163,11 @@ export function OfferV2(props: { cta: ReactNode }) {
             </Reveal>
           ))}
         </div>
+        {/* O sistema por dentro: exemplo fixo, não a tela personalizada de quem visita. */}
+        <Reveal className="v2-demo">
+          <span className="label">Exemplo — o DAY 03 dentro do sistema</span>
+          <BuildDemo />
+        </Reveal>
       </section>
 
       {/* ---------- 07 OUTPUT: o valor está na densidade do que sai, não no custo diário ---------- */}
@@ -175,17 +189,19 @@ export function OfferV2(props: { cta: ReactNode }) {
           <div className="v2-value__vs">
             <p>
               <span className="label">Mais conteúdo</span>
+              <span className="v2-chain">curso → conteúdo → ajuste → ferramenta → mais conteúdo</span>
               Meses consumindo, nenhum entregável.
             </p>
             <p>
               <span className="label">7-Day Build</span>
+              <span className="v2-chain">direção → problema → oferta → MVP → mercado</span>
               Uma semana, uma oferta pronta para testar no mercado.
             </p>
           </div>
         </Reveal>
       </section>
 
-      {/* ---------- 08 RISK / FRICTION: autosseleção + atrito removido antes do preço ---------- */}
+      {/* ---------- 08 FIT: autosseleção antes do preço (objeções práticas: só no FAQ) ---------- */}
       <section className="v2-sec wrap">
         <Reveal className="v2-sec__head">
           <span className="label v2-ch">08 — Before you start</span>
@@ -209,14 +225,6 @@ export function OfferV2(props: { cta: ReactNode }) {
             </ul>
           </Reveal>
         </div>
-        <dl className="v2-friction">
-          {FRICTION.map(([k, v], i) => (
-            <Reveal key={k} i={i % 3} className="v2-friction__row">
-              <dt>{k}</dt>
-              <dd>{v}</dd>
-            </Reveal>
-          ))}
-        </dl>
       </section>
 
       {/* ---------- 09 PRICE + CTA: um único lugar, sem ruído ---------- */}
@@ -242,14 +250,15 @@ export function OfferV2(props: { cta: ReactNode }) {
         <Faq />
       </section>
 
-      {/* ---------- 11 FINAL DOOR: só texto, escolha de identidade ---------- */}
+      {/* ---------- 11 FINAL DOOR: só texto (o desenho das portas é do resultado e do DAY 07) ---------- */}
       <section className="v2-door wrap">
-        <Reveal>
+        <Reveal className="v2-door__text">
           <p className="v2-door__lead">
-            Quase todo mundo escolhe consumir mais uma coisa.
+            Quase todo mundo escolhe construir mais uma coisa.
             <br />
-            <span>Você pode construir a sua.</span>
+            <span>A porta de conseguir clientes vive vazia.</span>
           </p>
+          <p className="v2-note">O 7-Day Build termina nela: no DAY 07, sua oferta vai para o mercado.</p>
         </Reveal>
         <Reveal i={1}>{action}</Reveal>
       </section>
