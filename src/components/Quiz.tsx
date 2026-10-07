@@ -54,13 +54,19 @@ export default function Quiz() {
       if (a) prev = { answers: a, lead: s.lead ?? null };
     } catch {}
     // ?r=102 abre a rota direto (links de lembrete do ManyChat — o lead já foi capturado).
-    const fromUrl = decodeAnswers(new URLSearchParams(window.location.search).get("r") || "");
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = decodeAnswers(params.get("r") || "");
     if (fromUrl) {
       setAnswers(fromUrl);
       setLead(prev?.lead ?? null);
       setStage({ kind: "result" });
-    } else if (prev) {
-      setSaved(prev);
+    } else {
+      if (prev) setSaved(prev);
+      // ?start=1 (CTA do /v2): entra direto na pergunta 1, igual a clicar em "Comece".
+      if (params.get("start") === "1") {
+        setStage({ kind: "question", index: 0 });
+        trackCustom("QuizInicio");
+      }
     }
     return () => window.clearTimeout(advanceTimer.current);
   }, []);

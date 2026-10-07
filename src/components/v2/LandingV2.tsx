@@ -69,7 +69,7 @@ export function LandingV2() {
   }, []);
 
   const cta = (
-    <Link className="btn btn--primary btn--lg" href="/">
+    <Link className="btn btn--primary btn--lg" href="/?start=1">
       Comece seu 7-Day Build <Arrow />
     </Link>
   );

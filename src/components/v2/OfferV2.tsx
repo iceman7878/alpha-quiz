@@ -92,8 +92,6 @@ const FRICTION: [string, string][] = [
   ["Acesso por e-mail.", "Confirmada a compra, o link de acesso chega no seu e-mail."],
 ];
 
-const perDay = (OFFER.price / 7).toFixed(2).replace(".", ",");
-
 export function OfferV2(props: { cta: ReactNode }) {
   const action = (
     <div className="v2-cta">
@@ -157,7 +155,7 @@ export function OfferV2(props: { cta: ReactNode }) {
           ))}
         </div>
         <Reveal className="v2-day8">
-          <p className="v2-day8__t">No dia 8, você tem:</p>
+          <p className="v2-day8__t">Ao final dos 7 dias, você tem:</p>
           <ol className="v2-day8__list">
             {BUILT.map((b, i) => (
               <li key={b}>
@@ -172,21 +170,30 @@ export function OfferV2(props: { cta: ReactNode }) {
         </Reveal>
       </section>
 
-      {/* ---------- 07 VALUE: a âncora é o custo de continuar consumindo ---------- */}
+      {/* ---------- 07 OUTPUT: o valor está na densidade do que sai, não no custo diário ---------- */}
       <section className="v2-sec wrap">
         <Reveal className="v2-value">
-          <span className="label v2-ch">07 — Value</span>
-          <p className="v2-value__math">
-            <span className="num">{OFFER.priceLabel}</span> ÷ 7 dias ≈ <span className="num">R$ {perDay}</span> por dia de construção.
-          </p>
+          <span className="label v2-ch">07 — Output</span>
+          <p className="v2-value__math">7 dias. 8 partes construídas.</p>
+          <ol className="v2-day8__list v2-value__parts">
+            {BUILT.map((b, i) => (
+              <li key={b}>
+                <span className="num">{String(i + 1).padStart(2, "0")}</span>
+                {b}
+              </li>
+            ))}
+            <li className="is-sum">
+              <span className="num">=</span>First Market Test
+            </li>
+          </ol>
           <div className="v2-value__vs">
             <p>
               <span className="label">Mais conteúdo</span>
-              Meses consumindo. Nenhum entregável.
+              Meses consumindo, nenhum entregável.
             </p>
             <p>
               <span className="label">7-Day Build</span>
-              Uma semana. Oito partes construídas. Uma oferta no mercado.
+              Uma semana, uma oferta pronta para testar no mercado.
             </p>
           </div>
         </Reveal>
