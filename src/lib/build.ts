@@ -10,6 +10,9 @@ export type Field = {
   label: string;
   hint?: string;
   multiline?: boolean;
+  /** Campo que repete uma resposta de um dia anterior: abre preenchido com ela se estiver vazio.
+   *  A resposta continua sendo do dia de origem; aqui vira uma cópia editável, salva só quando a pessoa salva o dia. */
+  from?: { day: number; id: string };
 };
 
 export type Tool = { title: string; body: string };

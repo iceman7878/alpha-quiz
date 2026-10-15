@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { AreaFallback, Shell, useArea } from "@/components/area";
 import { Arrow, Artifact, CopyButton, FieldNote, Reveal, Tick, TwoDoors } from "@/components/ui";
-import { renderOutput, type Answers, type Day, type Field, type Reply, type Script, type Step } from "@/lib/build";
+import { firstMarketTest, renderOutput, type Answers, type Day, type Field, type FmtRow, type Reply, type Script, type Step } from "@/lib/build";
 import { ROUTES, type RouteKey } from "@/lib/quiz";
 import { saveDay, type Progress } from "@/lib/store";
 
@@ -30,6 +30,7 @@ export default function DayPage() {
     );
   }
   const saved = state.progress[n];
+  const { answers, carried } = carryOver(day, saved?.answers ?? {}, state.progress);
   return (
     <DayView
       key={n}
@@ -38,11 +39,36 @@ export default function DayPage() {
       nextName={state.content.days.find((d) => d.n === n + 1)?.name}
       progress={state.progress}
       example={state.member.route ? state.content.day01Examples[state.member.route] : undefined}
-      initial={saved?.answers ?? {}}
+      initial={answers}
+      carried={carried}
+      hasSaved={Object.values(saved?.answers ?? {}).some((v) => v.trim())}
       initiallyDone={!!saved?.completed}
       route={state.member.route}
     />
   );
+}
+
+/** Campo vazio com `from` abre com a resposta do dia de origem. Nada é gravado aqui:
+ *  vira resposta deste dia só quando a pessoa salva ou conclui. Campo já respondido nunca é tocado. */
+function carryOver(day: Day, saved: Answers, progress: Progress) {
+  const answers = { ...saved };
+  const carried: Record<string, number> = {};
+  for (const f of day.fields) {
+    if (!f.from || (saved[f.id] || "").trim()) continue;
+    const v = (progress[f.from.day]?.answers?.[f.from.id] || "").trim();
+    if (!v) continue;
+    answers[f.id] = v;
+    carried[f.id] = f.from.day;
+  }
+  return { answers, carried };
+}
+
+/** "Você vem de": o entregável-chave do dia anterior, no mesmo recorte do First Market Test. */
+function previousLead(n: number, progress: Progress): FmtRow | null {
+  if (n < 2 || !progress[n - 1]) return null;
+  const byDay = Object.fromEntries(Object.entries(progress).map(([k, v]) => [k, v?.answers]));
+  const lead = firstMarketTest(byDay).sections[n - 2]?.lead;
+  return lead && lead.value !== "…" ? lead : null;
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -55,6 +81,8 @@ function DayView(props: {
   progress: Progress;
   example?: string;
   initial: Answers;
+  carried: Record<string, number>;
+  hasSaved: boolean;
   initiallyDone: boolean;
   route: RouteKey | null;
 }) {
@@ -64,6 +92,7 @@ function DayView(props: {
   const [done, setDone] = useState(props.initiallyDone);
   const [save, setSave] = useState<{ state: SaveState; msg?: string }>({ state: "idle" });
   const [commit, setCommit] = useState<CommitPhase>("idle");
+  const [carried, setCarried] = useState(props.carried);
   const dirty = useRef(false);
   const timer = useRef<number | undefined>(undefined);
 
@@ -84,6 +113,7 @@ function DayView(props: {
     dirty.current = true;
     if (commit === "error") setCommit("idle");
     setAnswers((a) => ({ ...a, [id]: value }));
+    if (carried[id]) setCarried(({ [id]: _, ...rest }) => rest);
   }
 
   const filled = day.fields.filter((f) => (answers[f.id] || "").trim()).length;
@@ -122,7 +152,9 @@ function DayView(props: {
   }
 
   const route = props.route ? ROUTES[props.route] : null;
-  const hasWork = Object.values(props.initial).some((v) => v.trim());
+  const hasWork = props.hasSaved;
+  const prev = previousLead(day.n, props.progress);
+  const missing = day.fields.length - filled;
 
   // Leva direto ao trabalho: a leitura vem antes dos campos.
   function goToFirstField() {
@@ -176,6 +208,14 @@ function DayView(props: {
         </p>
       </header>
 
+      {prev && (
+        <Link className="recap enter" style={{ "--i": 4 } as CSSProperties} href={`/build/dia/${day.n - 1}`}>
+          <span className="recap__from">Você vem do DAY 0{day.n - 1}</span>
+          <span className="recap__label">{prev.label}</span>
+          <span className="recap__value">{prev.list ? prev.value.split("\n")[0] : prev.value}</span>
+        </Link>
+      )}
+
       <article className="lesson">
         {/* 01 — THE IDEA */}
         <Chapter n={1} label="The idea">
@@ -218,7 +258,11 @@ function DayView(props: {
         <Chapter n={5} label="Your move">
           <section className="workspace" aria-label="Your move">
             <header className="work__head">
-              <span className="caption">Preencha com o seu caso. Salva sozinho.</span>
+              <span className="caption">
+                {filled === 0 || complete
+                  ? "Preencha com o seu caso. Salva sozinho."
+                  : `${missing === 1 ? "Falta 1 campo" : `Faltam ${missing} campos`}. Dá para concluir agora e voltar depois.`}
+              </span>
               <span className="work__count num" aria-live="polite">
                 {filled}/{day.fields.length}
               </span>
@@ -231,6 +275,7 @@ function DayView(props: {
                   index={i}
                   value={answers[f.id] || ""}
                   hint={day.n === 1 && f.id === "direcao" && props.example ? props.example : f.hint}
+                  carriedFrom={carried[f.id]}
                   onChange={(v) => update(f.id, v)}
                 />
               ))}
@@ -350,7 +395,14 @@ function DayView(props: {
                   Salvar
                 </button>
                 <button className="btn btn--primary actionbar__done" onClick={finish} disabled={filled === 0}>
-                  {commit === "error" ? "Tentar de novo" : `Concluir ${day.code}`} <Arrow />
+                  {commit === "error"
+                    ? "Tentar de novo"
+                    : done
+                      ? day.n < props.total
+                        ? `Salvar e ir ao DAY 0${day.n + 1}`
+                        : "Salvar e ir ao Build Score"
+                      : `Concluir ${day.code}`}{" "}
+                  <Arrow />
                 </button>
               </div>
             </>
@@ -361,7 +413,14 @@ function DayView(props: {
   );
 }
 
-function FieldInput(props: { field: Field; index: number; value: string; hint?: string; onChange: (v: string) => void }) {
+function FieldInput(props: {
+  field: Field;
+  index: number;
+  value: string;
+  hint?: string;
+  carriedFrom?: number;
+  onChange: (v: string) => void;
+}) {
   const { field, value } = props;
   const ref = useRef<HTMLTextAreaElement>(null);
   const id = `f-${field.id}`;
@@ -393,8 +452,9 @@ function FieldInput(props: { field: Field; index: number; value: string; hint?: 
         />
         <span className="fld__line" aria-hidden />
       </div>
-      {props.hint && (
+      {(props.hint || props.carriedFrom) && (
         <p className="fld__hint" id={`${id}-hint`}>
+          {props.carriedFrom && <span className="fld__from">Veio do DAY 0{props.carriedFrom}. Edite se mudou. </span>}
           {props.hint}
         </p>
       )}

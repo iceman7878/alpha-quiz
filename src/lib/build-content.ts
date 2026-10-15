@@ -306,8 +306,8 @@ export const DAYS: Day[] = [
     },
     fieldNote: "Se você precisa explicar sua oferta por cinco minutos, ela está complicada demais.",
     fields: [
-      { id: "quem", label: "Quem compra", hint: "O público do DAY 02, o mais estreito possível." },
-      { id: "problema", label: "Qual problema você resolve", hint: "Na frase do cliente." },
+      { id: "quem", label: "Quem compra", hint: "O público do DAY 02, o mais estreito possível.", from: { day: 2, id: "quem" } },
+      { id: "problema", label: "Qual problema você resolve", hint: "Na frase do cliente.", from: { day: 2, id: "problema" } },
       { id: "entrega", label: "O que a pessoa recebe", hint: "Formato, prazo, quantidade. O que está incluído — e o que não está.", multiline: true },
       { id: "resultado", label: "Resultado que ela pode esperar", hint: "Controlável — depende de você entregar." },
       { id: "mecanismo", label: "Seu mecanismo", hint: "O seu “como” específico. É o que torna a promessa crível." },
@@ -422,7 +422,7 @@ export const DAYS: Day[] = [
     },
     fieldNote: "Se você está construindo antes de alguém pedir, está adiando o teste.",
     fields: [
-      { id: "resultado", label: "O resultado prometido", hint: "Copie da sua oferta." },
+      { id: "resultado", label: "O resultado prometido", hint: "O resultado da sua oferta (DAY 03).", from: { day: 3, id: "resultado" } },
       { id: "tudo", label: "Tudo o que você imaginou colocar", hint: "Tudo mesmo. Despejar é o que permite cortar.", multiline: true },
       { id: "minimo", label: "O mínimo que ainda entrega o resultado", hint: "Só o que é essencial para o resultado.", multiline: true },
       { id: "como", label: "Como vai entregar", hint: "Manual, concierge, ferramenta pronta, documento ou serviço simples." },
@@ -531,7 +531,7 @@ export const DAYS: Day[] = [
     fields: [
       { id: "headline", label: "Headline", hint: "Resultado + para quem, em até 12 palavras." },
       { id: "sub", label: "Subheadline", hint: "Como: mecanismo, prazo, formato." },
-      { id: "promessa", label: "Promessa (específica e controlável)" },
+      { id: "promessa", label: "Promessa (específica e controlável)", hint: "Parte do resultado da oferta (DAY 03). Ajuste a forma, não o tamanho.", from: { day: 3, id: "resultado" } },
       { id: "beneficios", label: "3 benefícios", hint: "Um por linha. O que muda para o cliente, não o que vem no pacote.", multiline: true },
       { id: "cta", label: "CTA — a única ação", hint: "Ex.: “Chama no WhatsApp”, “Comenta AGENDA”." },
       { id: "bio", label: "Bio do Instagram", hint: "Linha 1: o que você faz para quem. Linha 2: como ou diferencial. Linha 3: CTA.", multiline: true },
@@ -676,7 +676,7 @@ export const DAYS: Day[] = [
       { id: "onde", label: "Onde estão as suas 30 pessoas", hint: "Lugares concretos: buscas, grupos, perfis, bairros, comentários. Quanto mais específico, mais rápido você monta a lista.", multiline: true },
       { id: "hooks", label: "3 hooks", hint: "Um por linha, na linguagem do cliente.", multiline: true },
       { id: "conteudos", label: "3 conteúdos prontos para publicar", hint: "Para cada um: Hook → Problema → Insight → CTA. Escreva o que você realmente publicaria, não apenas o tema.", multiline: true },
-      { id: "cta", label: "CTA / palavra-chave", hint: "Ex.: “Comenta AGENDA que te mando como funciona”." },
+      { id: "cta", label: "CTA / palavra-chave", hint: "Ex.: “Comenta AGENDA que te mando como funciona”.", from: { day: 5, id: "cta" } },
       { id: "frequencia", label: "Frequência nos próximos 7 dias" },
     ],
     finalize: `Caminho: {caminho}\nCanal: {canal} · {frequencia}\nOnde estão as primeiras 30 pessoas: {onde}\n\nHooks:\n{hooks}\n\nConteúdos prontos:\n{conteudos}\n\nCTA: {cta}`,
