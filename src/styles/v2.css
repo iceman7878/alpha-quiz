@@ -680,8 +680,41 @@
   line-height: var(--lh-heading);
   letter-spacing: var(--tr-heading);
 }
+/* as 8 partes como prancha: 8 células iguais (2×4 no mobile, 4×2 no desktop), sem linha órfã;
+   uma linha de soma mais forte fecha o conjunto no First Market Test */
 .v2-value__parts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-4) var(--s-3);
   margin-bottom: var(--s-8);
+  padding-top: var(--s-5);
+}
+.v2-value__parts li {
+  display: grid;
+  gap: var(--s-1);
+  padding-left: var(--s-3);
+  border-left: var(--bw) solid var(--line);
+}
+/* número é texto de 14px: --text-4 dá ~2:1; --text-2 passa AA e segue abaixo do nome (osso) */
+.v2-value__parts li .num {
+  margin-right: 0;
+  color: var(--text-2);
+}
+.v2-value__parts .is-sum {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+  padding: var(--s-4) 0 0;
+  border-left: 0;
+  border-top: var(--bw) solid var(--line-strong);
+}
+@media (min-width: 900px) {
+  .v2-value__parts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    column-gap: var(--s-5);
+  }
 }
 .v2-value__vs {
   display: grid;
