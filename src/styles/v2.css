@@ -249,7 +249,7 @@
 }
 .v2-verdict.is-on {
   opacity: 1;
-  transform: scale(1.45);
+  transform: none;
 }
 .v2-neq {
   margin: 0;
@@ -440,12 +440,40 @@
   list-style: none;
 }
 .v2-days li {
+  position: relative;
   display: grid;
   grid-template-columns: 28px minmax(0, 7.5rem) 1fr;
   gap: var(--s-3);
   align-items: baseline;
-  padding: var(--s-2) 0;
+  padding: var(--s-2) 0 var(--s-2) var(--s-5);
   border-bottom: var(--bw) solid var(--line-soft);
+}
+/* eixo técnico: uma linha fina atravessa os 7 dias, um nó por dia (a mesma coluna do core) */
+.v2-days li::before,
+.v2-days li::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+}
+.v2-days li::before {
+  top: 0;
+  bottom: -1px;
+  width: 1px;
+  background: var(--line);
+}
+.v2-days li:first-child::before {
+  top: calc(var(--s-2) + 0.7em);
+}
+.v2-days li:last-child::before {
+  bottom: calc(100% - var(--s-2) - 0.7em);
+}
+.v2-days li::after {
+  top: calc(var(--s-2) + 0.7em - 2px);
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border: var(--bw) solid var(--line-strong);
+  background: var(--campo-top);
 }
 .v2-days .num {
   color: var(--text-4);
@@ -539,12 +567,106 @@
   }
 }
 
-/* 06 — o sistema por dentro (exemplo) */
+/* 06 — o sistema por dentro (exemplo): a interface real sobre uma placa, com notas técnicas */
 .v2-demo {
   display: grid;
   gap: var(--s-4);
-  max-width: 560px;
   margin-top: var(--s-9);
+}
+.v2-demo__fig {
+  display: grid;
+  gap: var(--s-6);
+}
+.v2-demo__plate {
+  position: relative;
+  isolation: isolate;
+  max-width: 520px;
+  margin-right: var(--s-3);
+}
+/* profundidade: uma segunda lâmina por trás, deslocada — a mesma lógica de camadas do core */
+.v2-demo__plate::before {
+  content: "";
+  position: absolute;
+  inset: var(--s-3) calc(var(--s-3) * -1) calc(var(--s-3) * -1) var(--s-3);
+  z-index: -1;
+  border: var(--bw) solid var(--line-soft);
+  background: var(--surface-2);
+}
+/* aresta superior com um brilho metálico contido */
+.v2-demo__plate::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--osso-40) 30%, transparent 85%);
+  pointer-events: none;
+}
+.v2-demo__plate .demo {
+  background: linear-gradient(170deg, rgba(62, 68, 79, 0.16), rgba(8, 8, 10, 0.6)), var(--campo-bottom);
+}
+.v2-demo__notes {
+  display: grid;
+  gap: var(--s-4);
+  margin: 0;
+  padding: var(--s-4) 0 0;
+  list-style: none;
+  border-top: var(--bw) solid var(--line);
+}
+.v2-demo__notes li {
+  display: grid;
+  gap: var(--s-1);
+}
+.v2-demo__notes .num {
+  margin-right: var(--s-1);
+  color: var(--text-4);
+}
+.v2-demo__note {
+  color: var(--text-2);
+  font-size: var(--t-small);
+  line-height: 1.5;
+}
+@media (min-width: 900px) {
+  .v2-demo__fig {
+    grid-template-columns: minmax(0, 520px) minmax(0, 18rem);
+    column-gap: var(--s-9);
+  }
+  .v2-demo__plate {
+    margin-right: 0;
+  }
+  /* notas na altura da parte que descrevem, ligadas à placa por uma linha fina */
+  .v2-demo__notes {
+    position: relative;
+    padding: 0;
+    border-top: 0;
+  }
+  .v2-demo__notes li {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: var(--y, 0);
+    transform: translateY(-50%);
+  }
+  .v2-demo__notes li::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: calc(100% + var(--s-3));
+    width: calc(var(--s-9) - var(--s-3) * 2 + var(--s-3));
+    height: 1px;
+    background: var(--line);
+  }
+  .v2-demo__notes li::after {
+    content: "";
+    position: absolute;
+    top: calc(50% - 2px);
+    right: calc(100% + var(--s-9) - var(--s-3) - 2px);
+    width: 5px;
+    height: 5px;
+    border: var(--bw) solid var(--line-strong);
+    background: var(--campo-top);
+  }
 }
 
 /* 07 — valor */

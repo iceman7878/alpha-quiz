@@ -10,10 +10,10 @@
 import type { ReactNode } from "react";
 import { OFFER } from "@/config";
 import { BUILD_DAYS } from "@/lib/quiz";
-import { BuildDemo } from "../funnel/BuildDemo";
 import { Faq } from "../funnel/Sections";
 import { Reveal } from "../ui";
 import { STAGES } from "./core-timeline";
+import { DemoFigure } from "./DemoFigure";
 
 const ROUTES = ["AI Service Builder", "Expertise Builder", "Backstage Builder", "Distribution Builder"];
 
@@ -166,7 +166,7 @@ export function OfferV2(props: { cta: ReactNode }) {
         {/* O sistema por dentro: exemplo fixo, não a tela personalizada de quem visita. */}
         <Reveal className="v2-demo">
           <span className="label">Exemplo — o DAY 03 dentro do sistema</span>
-          <BuildDemo />
+          <DemoFigure />
         </Reveal>
       </section>
 
