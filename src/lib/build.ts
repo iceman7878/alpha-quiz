@@ -67,6 +67,49 @@ export function renderOutput(template: string, a: Answers): string {
   });
 }
 
+// ---------- DAY 03: teste de clareza sem IA ----------
+// Sinais checáveis pelo texto da oferta. É um apoio, não um veredito: o teste que decide é uma pessoa real.
+
+export type ClarityItem = { label: string; ok: boolean; fix: string };
+
+const words = (v: string) => v.trim().split(/\s+/).filter(Boolean).length;
+const JARGON = /\b(escal\w*|alavanc\w*|transform\w*|potencializ\w*|disruptiv\w*|inovador\w*|próximo nível|sucesso)\b/i;
+const INCOME = /(fatur\w*|lucr\w*|renda|enriquec\w*|garant\w*|milh\w*|R\$|liberdade financeira|passiv\w*)/i;
+const BROAD = /^(todo mundo|todos|qualquer|pessoas|empresas|empreendedores|quem quer)\b/i;
+
+export function clarityCheck(a: Answers): ClarityItem[] {
+  const t = (k: string) => (a[k] || "").trim();
+  const sentence = `Eu ajudo ${t("quem")} a ${t("resultado")}, resolvendo ${t("problema")}.`;
+  const all = ["quem", "problema", "resultado", "mecanismo"].map(t).join(" ");
+  return [
+    {
+      label: "Público que dá para listar",
+      ok: words(t("quem")) >= 3 && !BROAD.test(t("quem")),
+      fix: "Estreite “quem compra”: profissão, situação ou lugar — até dar para nomear 10 pessoas.",
+    },
+    {
+      label: "Resultado que depende da sua entrega",
+      ok: !!t("resultado") && !INCOME.test(t("resultado")),
+      fix: "Tire faturamento, renda ou garantia do resultado. Prometa o que você entrega.",
+    },
+    {
+      label: "Entrega com limite",
+      ok: /\d/.test(t("entrega")) || /n[ãa]o inclui/i.test(t("entrega")),
+      fix: "Diga formato, prazo ou quantidade com números — e o que não está incluído.",
+    },
+    {
+      label: "Preço com número",
+      ok: /\d/.test(t("preco")),
+      fix: "Escreva o valor e a referência (o custo do problema ou o que a pessoa já paga).",
+    },
+    {
+      label: "Frase em uma respiração, sem jargão",
+      ok: !!t("quem") && !!t("resultado") && words(sentence) <= 35 && !JARGON.test(all),
+      fix: "Encurte a frase e troque palavras como “escalar” ou “transformar” pelo que acontece de fato.",
+    },
+  ];
+}
+
 // ---------- FIRST MARKET TEST ----------
 // O documento final: só respostas reais da pessoa, organizadas na ordem do raciocínio.
 // Campo vazio = "…". Nada é inventado para preencher lacuna.
@@ -99,8 +142,18 @@ export function firstMarketTest(byDay: Record<number, Answers | undefined>): Fmt
   return { sections, firstPerson: lines(d7.lista)[0] ?? "…", review: val(d7.revisao) };
 }
 
+/** Evidência de mercado: vem só do Build Score (o que a pessoa declarou que aconteceu), nunca dos campos do plano. */
+export const EVIDENCE = [
+  { i: 4, label: "Conversas com o mercado" },
+  { i: 5, label: "Validação real (pedido, pré-venda, “quero”)" },
+  { i: 6, label: "Métrica definida e revisada" },
+];
+
+/** Quantas das 8 partes do plano têm conteúdo (a lista dos 10 e a oferta no ar contam como partes). */
+export const fmtBuilt = (f: Fmt) => f.sections.filter((s) => s.lead.value !== "…").length;
+
 /** Texto limpo do documento, útil fora do produto (notas, WhatsApp, e-mail). */
-export function fmtText(f: Fmt, nome?: string | null): string {
+export function fmtText(f: Fmt, nome?: string | null, evidence?: boolean[] | null): string {
   const out = ["FIRST MARKET TEST" + (nome ? ` — ${nome}` : ""), ""];
   for (const s of f.sections) {
     out.push(`${String(s.n).padStart(2, "0")} — ${s.stage}`, s.question, "");
@@ -109,7 +162,10 @@ export function fmtText(f: Fmt, nome?: string | null): string {
     for (const row of s.rows) out.push(row.value.includes("\n") ? `${row.label}:\n${row.value}` : `${row.label}: ${row.value}`);
     out.push("");
   }
-  out.push("NEXT MOVE", `Mande a mensagem para ${f.firstPerson}. Depois, as outras 9 até ${f.review}.`, "", "ALPHA — BUILD THE LIFE YOU WANT");
+  out.push("EVIDÊNCIA DE MERCADO");
+  if (evidence) for (const e of EVIDENCE) out.push(`${e.label}: ${evidence[e.i] ? "sim" : "ainda não"}`);
+  else out.push("Ainda sem registro (Build Score).");
+  out.push("", "NEXT MOVE", `Mande a mensagem para ${f.firstPerson}. Depois, as outras 9 até ${f.review}.`, "", "ALPHA — BUILD THE LIFE YOU WANT");
   return out.join("\n");
 }
 
@@ -128,6 +184,12 @@ export const SCORE_QUESTIONS = [
 
 /** Rótulos curtos dos critérios, na mesma ordem. */
 export const SCORE_CRITERIA = ["Oferta", "MVP", "Posição", "Distribuição", "Conversas", "Validação", "Métricas"];
+
+/** Os 4 primeiros medem o que você construiu; os 3 últimos, o que o mercado respondeu. */
+export const SCORE_GROUPS = [
+  { label: "Construção", hint: "O que você fez", from: 0, to: 4 },
+  { label: "Mercado", hint: "O que o mercado respondeu", from: 4, to: 7 },
+];
 
 export const LEVELS = {
   1: { code: "BUILD 01", title: "Você começou.", text: "A base existe. O próximo passo é fechar a oferta e o MVP — sem eles, não há o que levar ao mercado." },

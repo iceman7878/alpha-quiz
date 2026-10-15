@@ -887,6 +887,66 @@
   min-height: 7em;
 }
 
+/* DAY 03: teste de clareza — lista de sinais, sem cor de status (só marca e opacidade). */
+.clarity {
+  display: grid;
+  gap: var(--s-3);
+  padding-top: var(--s-4);
+  border-top: var(--bw) solid var(--line);
+}
+.clarity__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-3);
+}
+.clarity__count {
+  color: var(--text-3);
+  font-size: 13px;
+}
+.clarity__list {
+  display: grid;
+  gap: var(--s-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.clarity__list li {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: var(--s-1) var(--s-3);
+  align-items: baseline;
+}
+.clarity__mark {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  color: var(--text-3);
+}
+.clarity__mark svg {
+  width: 14px;
+  height: 14px;
+}
+.clarity__list .is-ok .clarity__mark,
+.clarity__list .is-ok .clarity__label {
+  color: var(--text-2);
+}
+.clarity__list .is-fix .clarity__label {
+  color: var(--text);
+}
+.clarity__fix {
+  grid-column: 2;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.clarity__note {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .tools__list {
   list-style: none;
   margin: 0;
@@ -1139,6 +1199,28 @@
     writing-mode: vertical-rl;
     transform: rotate(180deg);
   }
+}
+/* Construção (4) | Mercado (3): um respiro marca a fronteira. */
+.meter7__cells li:nth-child(5) {
+  margin-left: var(--s-3);
+}
+.meter7__sum span + span::before {
+  content: "·";
+  margin: 0 var(--s-2);
+  color: var(--text-4);
+}
+.audit__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-3);
+  align-items: baseline;
+  margin: var(--s-8) 0 0;
+}
+.audit__group + .audit {
+  margin-top: var(--s-3);
+}
+.audit__group .caption {
+  color: var(--text-3);
 }
 .meter7__cells li.is-on .meter7__label {
   color: var(--text-2);
@@ -1430,6 +1512,34 @@
 }
 .fmt .is-empty {
   color: var(--text-4);
+}
+.fmt__built {
+  margin: var(--s-2) 0 0;
+  color: var(--text-3);
+  font-size: 13px;
+}
+/* Evidência de mercado: separada do plano, só com o que o Build Score registrou. */
+.fmt__evidence {
+  display: grid;
+  gap: var(--s-4);
+  max-width: 820px;
+  margin: var(--s-8) 0;
+  padding: var(--s-5) 0 0;
+  border-top: var(--bw) solid var(--line-strong);
+}
+.fmt__ev-empty {
+  margin: 0;
+  max-width: 52ch;
+  color: var(--text-2);
+}
+.fmt__ev-empty a {
+  color: var(--text);
+  text-underline-offset: 3px;
+}
+@media (min-width: 720px) {
+  .fmt__evidence {
+    margin-left: calc(112px + var(--s-6));
+  }
 }
 .fmt__next {
   display: grid;

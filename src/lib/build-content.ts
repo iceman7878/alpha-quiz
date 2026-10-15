@@ -264,6 +264,19 @@ export const DAYS: Day[] = [
         text: "Junte tudo: “Eu ajudo [quem] a [resultado], com [mecanismo], em [escopo]”. Se não cabe em uma frase, tem coisa demais.",
       },
       {
+        title: "Teste de clareza (sem IA)",
+        text: "Antes de mostrar para alguém, leia a sua frase de oferta e responda com sim ou não. Cada “não” aponta o campo para reescrever.",
+        points: [
+          "Dá para listar 10 pessoas reais que se encaixam em “quem compra”? Se não, o público ainda está largo.",
+          "O resultado depende da sua entrega — e não do mercado, da sorte ou do esforço do cliente?",
+          "Está claro o que a pessoa recebe e o que não está incluído: formato, prazo ou quantidade?",
+          "O preço tem um número e uma referência (o custo do problema ou o que ela já paga hoje)?",
+          "A frase cabe em uma respiração, sem jargão (“escalar”, “alavancar”, “transformar”)?",
+          "Alguém do público consegue repetir a oferta com as próprias palavras depois de ouvir uma vez?",
+        ],
+        after: "As cinco primeiras você responde sozinho. A sexta só uma pessoa real responde — é o próximo movimento de hoje. Abaixo do seu entregável, o sistema sinaliza o que dá para checar pelo texto.",
+      },
+      {
         title: "Os 4 erros mais comuns",
         text: "Quase toda oferta que não vende cai em um destes:",
         points: [
@@ -634,6 +647,18 @@ export const DAYS: Day[] = [
         ],
         after: "Constância que você consegue sustentar vale mais do que um pico de esforço: 3 conteúdos publicados em 7 dias valem mais do que 10 planejados.",
       },
+      {
+        title: "Hoje, na prática (cerca de 60 minutos)",
+        text: "Cinco ações, nesta ordem. Cada uma termina com algo que existe — não com uma intenção.",
+        points: [
+          "5 min — escolha o caminho e o canal (campos 01 e 02). Um de cada.",
+          "25 min — abra o canal e anote 30 nomes na planilha First 10, com o sinal do problema que você viu em cada um.",
+          "20 min — escreva os 3 conteúdos completos (hook, problema, insight, CTA). Texto que dá para publicar, não tema.",
+          "5 min — agende ou deixe pronto o primeiro conteúdo para amanhã, com o CTA.",
+          "5 min — marque, na lista, as 10 pessoas mais prováveis. Elas são a abordagem do DAY 07.",
+        ],
+        after: "Se o tempo apertar, a prioridade é a lista. Conteúdo dá para publicar amanhã; sem nomes, o DAY 07 não tem com quem conversar.",
+      },
     ],
     seeIt: {
       before: "Ideia de conteúdo",
@@ -716,6 +741,16 @@ export const DAYS: Day[] = [
     ],
     method: [
       {
+        title: "Lançar, validar, vender: três coisas diferentes",
+        text: "Misturar as três é o que faz alguém achar que falhou quando ainda nem testou. Cada uma tem a sua medida.",
+        points: [
+          "Lançar — a oferta está visível e pessoas reais foram expostas a ela. Depende só de você. Mede-se em conteúdo publicado e abordagens enviadas.",
+          "Validar interesse — alguém com o problema deu um sinal que custa alguma coisa: respondeu, pediu o preço, pediu para conversar, entrou numa lista, reservou. Curtida não conta. Mede-se em conversas e ofertas apresentadas.",
+          "Vender — alguém pagou, ou fechou com data de pagamento. Mede-se em vendas.",
+        ],
+        after: "Nestes 7 dias, lançar é obrigatório e validar é o objetivo. A venda pode vir agora ou depois — não é ela que diz se você executou. Registre o que aconteceu em cada uma; é isso que o Build Score separa.",
+      },
+      {
         title: "Publicar",
         text: "Coloque a oferta em algum lugar para onde dá para mandar alguém: um post fixado, uma página simples, um destaque, até uma mensagem pronta no WhatsApp. Publique o primeiro conteúdo do DAY 06 com o CTA. Feito é melhor que perfeito — você ajusta com o que ouvir.",
       },
@@ -741,7 +776,7 @@ export const DAYS: Day[] = [
       },
       {
         title: "Medir",
-        text: "Acompanhe uma métrica nos próximos 7 dias. A mais útil no começo é quantas ofertas você apresentou: depende só de você e puxa todas as outras. Vendas são consequência.",
+        text: "Acompanhe uma métrica nos próximos 7 dias. A mais útil no começo é quantas ofertas você apresentou: é a ponte entre lançar e validar, depende só de você e puxa todas as outras. Vendas são consequência.",
       },
       {
         title: "Revisar",
@@ -836,7 +871,7 @@ export const DAYS: Day[] = [
       { id: "post", label: "Primeiro conteúdo: data e hora" },
       { id: "lista", label: "As 10 primeiras pessoas para abordar", hint: "Uma por linha, da sua lista de 30. Comece pela mais provável.", multiline: true },
       { id: "abordagem", label: "Sua primeira mensagem", hint: "Para a pessoa nº 1, com o contexto real de onde você a encontrou.", multiline: true },
-      { id: "metrica", label: "A métrica que você vai acompanhar", hint: "Sugestão: ofertas apresentadas." },
+      { id: "metrica", label: "A métrica que você vai acompanhar", hint: "Sugestão: ofertas apresentadas. Anote também conversas e vendas — são medidas diferentes." },
       { id: "revisao", label: "Data da revisão (daqui a 7 dias)" },
     ],
     finalize: `Oferta no ar: {link}\nPrimeiro conteúdo: {post}\nMétrica: {metrica}\nRevisão: {revisao}\n\nPrimeira mensagem:\n{abordagem}\n\nFirst 10:\n{lista}`,

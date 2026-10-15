@@ -121,7 +121,7 @@ export default function BuildHome() {
         <span aria-hidden>→</span>
       </Link>
 
-      <FirstMarketTest progress={progress} nome={member.nome} />
+      <FirstMarketTest progress={progress} nome={member.nome} evidence={member.scoreAnswers} />
 
       <BuildStack days={days} progress={progress} />
     </Shell>

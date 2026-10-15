@@ -28,13 +28,15 @@ export type Member = {
   active: boolean;
   score: number | null;
   level: Level | null;
+  /** Respostas do último Build Score (mesma ordem de SCORE_QUESTIONS); null se nunca respondeu. */
+  scoreAnswers: boolean[] | null;
 };
 
 export type DayProgress = { answers: Answers; completed: boolean };
 export type Progress = Record<number, DayProgress>;
 
 const DEMO_KEY = "alpha_launch_demo";
-type DemoState = { logged: boolean; progress: Progress; score: number | null; level: Level | null };
+type DemoState = { logged: boolean; progress: Progress; score: number | null; level: Level | null; scoreAnswers?: boolean[] | null };
 
 function demoRead(): DemoState {
   try {
@@ -134,13 +136,13 @@ export async function loadMember(): Promise<Member | null> {
   if (!c) {
     if (mode !== "demo") return null;
     const d = demoRead();
-    return { email: "demo@alpha", nome: local.nome, route: local.route ?? "servico", active: true, score: d.score, level: d.level };
+    return { email: "demo@alpha", nome: local.nome, route: local.route ?? "servico", active: true, score: d.score, level: d.level, scoreAnswers: d.scoreAnswers ?? null };
   }
   const { data: u } = await c.auth.getUser();
   if (!u.user) return null;
   const { data } = await c
     .from("members")
-    .select("email, nome, route, access_status, score, level")
+    .select("email, nome, route, access_status, score, level, score_answers")
     .eq("id", u.user.id)
     .maybeSingle();
   if (!data) return null;
@@ -151,6 +153,7 @@ export async function loadMember(): Promise<Member | null> {
     active: data.access_status === "active",
     score: data.score,
     level: data.level as Level | null,
+    scoreAnswers: Array.isArray(data.score_answers) && data.score_answers.length === 7 ? data.score_answers.map(Boolean) : null,
   };
 }
 
@@ -181,7 +184,7 @@ export async function saveDay(day: number, answers: Answers, completed: boolean)
 export async function saveScore(score: number, level: Level, yes: boolean[]): Promise<string | null> {
   const c = sb();
   if (!c) {
-    demoWrite({ ...demoRead(), score, level });
+    demoWrite({ ...demoRead(), score, level, scoreAnswers: yes });
     return null;
   }
   const { data: u } = await c.auth.getUser();

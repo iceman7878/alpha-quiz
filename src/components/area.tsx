@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { firstMarketTest, fmtText, renderOutput, type BuildContent, type Day } from "@/lib/build";
+import { EVIDENCE, firstMarketTest, fmtBuilt, fmtText, renderOutput, type BuildContent, type Day } from "@/lib/build";
 import { currentEmail, isDemo, loadContent, loadMember, loadProgress, mode, signOut, type Member, type Progress } from "@/lib/store";
 import { CopyButton, Rail, Reveal } from "./ui";
 
@@ -247,11 +247,19 @@ export function BuildStack(props: { days: Day[]; progress: Progress; className?:
 }
 
 /** FIRST MARKET TEST: o documento final. Só aparece com o DAY 07 concluído; só usa o que a pessoa escreveu. */
-export function FirstMarketTest(props: { progress: Progress; nome?: string | null; className?: string }) {
+export function FirstMarketTest(props: {
+  progress: Progress;
+  nome?: string | null;
+  /** Respostas do Build Score: a única fonte de evidência de mercado. */
+  evidence?: boolean[] | null;
+  className?: string;
+}) {
   if (!props.progress[7]?.completed) return null;
   const byDay = Object.fromEntries(Object.entries(props.progress).map(([k, v]) => [k, v?.answers]));
   const fmt = firstMarketTest(byDay);
-  const text = fmtText(fmt, props.nome);
+  const built = fmtBuilt(fmt);
+  const evidence = props.evidence ?? null;
+  const text = fmtText(fmt, props.nome, evidence);
   return (
     <article className={`fmt ${props.className ?? ""}`} aria-labelledby="fmt-title">
       <header className="fmt__head">
@@ -259,7 +267,10 @@ export function FirstMarketTest(props: { progress: Progress; nome?: string | nul
         <h2 className="fmt__title" id="fmt-title">
           {props.nome ? `${props.nome}, este é o seu plano para testar no mercado.` : "Este é o seu plano para testar no mercado."}
         </h2>
-        <p className="fmt__lead">Escrito por você, dia a dia. Da direção à primeira mensagem.</p>
+        <p className="fmt__lead">
+          Escrito por você, dia a dia. Da direção à primeira mensagem. Isto é o plano: o que o mercado respondeu fica separado, no fim.
+        </p>
+        <p className="fmt__built num">{built}/8 partes escritas</p>
       </header>
 
       <ol className="fmt__list">
@@ -297,6 +308,27 @@ export function FirstMarketTest(props: { progress: Progress; nome?: string | nul
           </Reveal>
         ))}
       </ol>
+
+      <Reveal as="section" className="fmt__evidence" aria-labelledby="fmt-ev-title">
+        <h3 className="label" id="fmt-ev-title">
+          Evidência de mercado
+        </h3>
+        {evidence ? (
+          <dl className="fmt__rows">
+            {EVIDENCE.map((e) => (
+              <div key={e.i} className="fmt__row">
+                <dt>{e.label}</dt>
+                <dd className={evidence[e.i] ? undefined : "is-empty"}>{evidence[e.i] ? "Sim" : "Ainda não"}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          <p className="fmt__ev-empty">
+            Ainda sem registro. Depois das primeiras conversas, responda o <Link href="/build/score">Build Score</Link>: conversas,
+            validação e métricas aparecem aqui.
+          </p>
+        )}
+      </Reveal>
 
       <Reveal className="fmt__next">
         <span className="label">Next move</span>

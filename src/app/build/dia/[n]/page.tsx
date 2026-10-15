@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { AreaFallback, Shell, useArea } from "@/components/area";
 import { Arrow, Artifact, CopyButton, FieldNote, Reveal, Tick, TwoDoors } from "@/components/ui";
-import { firstMarketTest, renderOutput, type Answers, type Day, type Field, type FmtRow, type Reply, type Script, type Step } from "@/lib/build";
+import { clarityCheck, firstMarketTest, renderOutput, type Answers, type Day, type Field, type FmtRow, type Reply, type Script, type Step } from "@/lib/build";
 import { ROUTES, type RouteKey } from "@/lib/quiz";
 import { saveDay, type Progress } from "@/lib/store";
 
@@ -294,6 +294,7 @@ function DayView(props: {
             >
               <pre className="artifact__body">{output}</pre>
             </Artifact>
+            {day.n === 3 && filled > 0 && <ClarityCheck answers={answers} />}
           </div>
         </Chapter>
 
@@ -459,6 +460,39 @@ function FieldInput(props: {
         </p>
       )}
     </div>
+  );
+}
+
+/** DAY 03: sinais de clareza checáveis pelo texto. Nada é salvo; recalcula a cada edição. */
+function ClarityCheck({ answers }: { answers: Answers }) {
+  const items = clarityCheck(answers);
+  const ok = items.filter((i) => i.ok).length;
+  return (
+    <section className="clarity" aria-labelledby="clarity-title">
+      <header className="clarity__head">
+        <h3 className="label" id="clarity-title">
+          Teste de clareza — sem IA
+        </h3>
+        <span className="clarity__count num" aria-live="polite">
+          {ok}/{items.length}
+        </span>
+      </header>
+      <ul className="clarity__list">
+        {items.map((i) => (
+          <li key={i.label} className={i.ok ? "is-ok" : "is-fix"}>
+            <span className="clarity__mark" aria-hidden>
+              {i.ok ? <Tick /> : "—"}
+            </span>
+            <span className="clarity__label">
+              {i.label}
+              <span className="sr-only">{i.ok ? ": ok" : ": revisar"}</span>
+            </span>
+            {!i.ok && <span className="clarity__fix">{i.fix}</span>}
+          </li>
+        ))}
+      </ul>
+      <p className="clarity__note">Sinais pelo texto, não veredito. O teste que decide é uma pessoa do público repetir a oferta com as próprias palavras.</p>
+    </section>
   );
 }
 

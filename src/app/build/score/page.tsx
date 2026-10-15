@@ -5,7 +5,7 @@ import { useState, type CSSProperties } from "react";
 import { AreaFallback, BuildStack, FirstMarketTest, Shell, useArea } from "@/components/area";
 import { Arrow, screenTransition } from "@/components/ui";
 import { MENTORSHIP_URL } from "@/config";
-import { LEVELS, SCORE_CRITERIA, SCORE_QUESTIONS, computeLevel, type Level } from "@/lib/build";
+import { LEVELS, SCORE_CRITERIA, SCORE_GROUPS, SCORE_QUESTIONS, computeLevel, type Level } from "@/lib/build";
 import { saveScore } from "@/lib/store";
 
 const SHOUT: Record<Level, string> = { 1: "You started.", 2: "You built.", 3: "You shipped." };
@@ -68,7 +68,13 @@ export default function ScorePage() {
                 </li>
               ))}
             </ol>
-            <p className="meter7__sum num">{result.score}/7 critérios</p>
+            <p className="meter7__sum num">
+              {SCORE_GROUPS.map((g) => (
+                <span key={g.label}>
+                  {g.label} {yes.slice(g.from, g.to).filter(Boolean).length}/{g.to - g.from}
+                </span>
+              ))}
+            </p>
           </div>
 
           <div className="mentor enter" style={{ "--i": 7 } as CSSProperties}>
@@ -82,7 +88,9 @@ export default function ScorePage() {
                   Aplicar para a ALPHA Mentorship <Arrow />
                 </a>
               ) : (
-                <p className="body">A aplicação para a ALPHA Mentorship abre em breve. Você será avisado pelo WhatsApp.</p>
+                <p className="body">
+                  A aplicação para a ALPHA Mentorship ainda não está aberta. Seu BUILD 03 fica registrado no seu perfil.
+                </p>
               )
             ) : (
               <div className="mentor__btns">
@@ -98,7 +106,7 @@ export default function ScorePage() {
             )}
           </div>
 
-          <FirstMarketTest progress={state.progress} nome={state.member.nome} />
+          <FirstMarketTest progress={state.progress} nome={state.member.nome} evidence={yes.map(Boolean)} />
 
           <BuildStack days={state.content.days} progress={state.progress} />
         </section>
@@ -125,31 +133,42 @@ export default function ScorePage() {
         )}
       </header>
 
-      <ol className="audit">
-        {SCORE_QUESTIONS.map((q, i) => (
-          <li
-            key={q}
-            className={`audit__row enter${yes[i] !== null ? " is-answered" : ""}`}
-            style={{ "--i": 3 + i } as CSSProperties}
-          >
-            <span className="audit__idx num">{String(i + 1).padStart(2, "0")}</span>
-            <span className="audit__q">{q}</span>
-            <div className="seg" role="radiogroup" aria-label={q}>
-              {[true, false].map((val) => (
-                <button
-                  key={String(val)}
-                  role="radio"
-                  aria-checked={yes[i] === val}
-                  className={`seg__btn${yes[i] === val ? " is-selected" : ""}`}
-                  onClick={() => setYes((y) => y.map((v, j) => (j === i ? val : v)))}
+      {SCORE_GROUPS.map((g) => (
+        <div key={g.label}>
+          <p className="audit__group">
+            <span className="label">{g.label}</span>
+            <span className="caption">{g.hint}</span>
+          </p>
+          <ol className="audit">
+            {SCORE_QUESTIONS.slice(g.from, g.to).map((q, k) => {
+              const i = g.from + k;
+              return (
+                <li
+                  key={q}
+                  className={`audit__row enter${yes[i] !== null ? " is-answered" : ""}`}
+                  style={{ "--i": 3 + i } as CSSProperties}
                 >
-                  {val ? "Sim" : "Não"}
-                </button>
-              ))}
-            </div>
-          </li>
-        ))}
-      </ol>
+                  <span className="audit__idx num">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="audit__q">{q}</span>
+                  <div className="seg" role="radiogroup" aria-label={q}>
+                    {[true, false].map((val) => (
+                      <button
+                        key={String(val)}
+                        role="radio"
+                        aria-checked={yes[i] === val}
+                        className={`seg__btn${yes[i] === val ? " is-selected" : ""}`}
+                        onClick={() => setYes((y) => y.map((v, j) => (j === i ? val : v)))}
+                      >
+                        {val ? "Sim" : "Não"}
+                      </button>
+                    ))}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      ))}
 
       {err && (
         <p className="alert" role="alert">
