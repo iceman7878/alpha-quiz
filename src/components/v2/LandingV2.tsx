@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { OFFER } from "@/config";
 import { BUILD_DAYS, decodeAnswers } from "@/lib/quiz";
+import { captureUtm } from "@/lib/tracking";
 import { Arrow, Reveal } from "../ui";
 import { BuildCore, type CoreApi } from "./BuildCore";
 import { OfferV2 } from "./OfferV2";
@@ -27,7 +28,9 @@ export function LandingV2() {
   const [savedRoute, setSavedRoute] = useState<string | null>(null);
 
   // Quem já fez o quiz volta direto para a rota salva (mesma chave do Quiz; /?r= abre o resultado).
+  // As UTMs de quem chega pela /v2 ficam guardadas (first-touch) — o CTA vai para /?start=1 sem elas na URL.
   useEffect(() => {
+    captureUtm();
     try {
       const r = JSON.parse(localStorage.getItem("alpha_quiz") || "null")?.r;
       if (typeof r === "string" && decodeAnswers(r)) setSavedRoute(r);

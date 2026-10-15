@@ -133,17 +133,20 @@ export default function Quiz() {
 
   async function submitLead(l: Lead, consent: boolean, trap: string) {
     if (!route) return;
+    let stored = false;
     try {
-      await fetch("/api/lead", {
+      const res = await fetch("/api/lead", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ...l, perfil: route.key, r: encodeAnswers(answers), utm, consentimento: consent, empresa: trap }),
         signal: AbortSignal.timeout(6000),
       });
+      stored = res.ok;
     } catch {
       // Falha de rede não pode travar a rota: segue para o resultado.
     }
-    track("Lead", { content_name: "rota", rota: route.key });
+    // Lead no Pixel só quando o lead foi gravado: evento sem registro infla a otimização da campanha.
+    if (stored) track("Lead", { content_name: "rota", rota: route.key });
     setLead(l);
     go({ kind: "result" });
   }
