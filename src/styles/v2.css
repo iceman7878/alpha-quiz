@@ -686,7 +686,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--s-4) var(--s-3);
-  margin-bottom: var(--s-8);
+  margin-bottom: var(--s-5);
   padding-top: var(--s-5);
 }
 .v2-value__parts li {
@@ -715,6 +715,11 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
     column-gap: var(--s-5);
   }
+}
+/* o resultado como ferramenta: uma linha, logo abaixo da soma */
+.v2-value__use {
+  max-width: 56ch;
+  margin: 0 0 var(--s-8);
 }
 .v2-value__vs {
   display: grid;

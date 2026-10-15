@@ -158,24 +158,35 @@ export function Offer(props: { cta: ReactNode; note?: ReactNode; route?: string 
   );
 }
 
+// Só respostas que o produto sustenta: nada de garantia, prazo de resultado ou número de venda.
 const FAQ: { q: string; a: string }[] = [
   {
     q: "Preciso saber programar?",
-    a: "Não. O DAY 04 serve para definir o menor MVP capaz de entregar o resultado. Programar não é requisito.",
+    a: "Não. No DAY 04 você define o menor MVP que entrega o resultado — pode ser manual, um documento, um serviço simples ou uma ferramenta pronta. Programar não é requisito.",
   },
-  { q: "Quanto tempo leva?", a: "Reserve cerca de 30–60 minutos por dia. O progresso é salvo." },
   {
     q: "E se eu não tiver uma ideia?",
-    a: "O quiz indica uma rota. No DAY 01 você transforma isso em uma direção concreta.",
+    a: "O quiz indica uma das quatro rotas a partir do seu ponto de partida. No DAY 01 você transforma essa rota em uma direção concreta, com exemplos da própria rota.",
   },
-  { q: "É um curso?", a: "Não. É um sprint de execução. Cada dia termina com um entregável." },
+  {
+    q: "Quanto tempo leva?",
+    a: "Cerca de 30 a 60 minutos por dia, ao longo de 7 dias. Não precisa ser em dias seguidos: o progresso fica salvo e você retoma de onde parou.",
+  },
+  {
+    q: "O ALPHA LAUNCH garante vendas?",
+    a: "Não. Nenhum método honesto garante vendas. O que o 7-Day Build cobre é a execução: no fim, sua oferta está escrita e diante de pessoas reais. A resposta do mercado depende da oferta, do público e de como você conduz as conversas.",
+  },
+  {
+    q: "E se ninguém comprar?",
+    a: "Então você descobre isso em dias, não em meses. O DAY 07 termina com uma data de revisão: com as conversas e os números na mão, você decide continuar, ajustar a oferta ou trocar de direção. Nenhuma venda também é um dado.",
+  },
+  {
+    q: "O que vou ter pronto no fim?",
+    a: "Oito partes escritas por você: direção, problema, oferta, MVP definido, posicionamento, plano de distribuição, a lista das 10 primeiras pessoas com a primeira mensagem e o plano de lançamento. Juntas, formam o First Market Test — um documento para copiar e usar.",
+  },
   {
     q: "O que acontece depois dos 7 dias?",
-    a: "Você termina com seu Build Score e seu First Market Test, além de um próximo movimento claro.",
-  },
-  {
-    q: "Como recebo acesso?",
-    a: "Após a confirmação da compra, você recebe as instruções para acessar o ALPHA Launch.",
+    a: "Você faz o Build Score, que separa o que construiu do que o mercado já respondeu, e segue o First Market Test até a data de revisão que você mesmo marcou. O próximo movimento fica escrito.",
   },
 ];
 

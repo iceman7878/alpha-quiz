@@ -82,7 +82,7 @@ const SPEC: { group: string; items: [string, string][] }[] = [
   },
   {
     group: "Saída",
-    items: [["First Market Test", "As 8 partes juntas, prontas para o mercado"]],
+    items: [["First Market Test", "As 8 partes num documento seu, para copiar e usar"]],
   },
 ];
 
@@ -186,6 +186,10 @@ export function OfferV2(props: { cta: ReactNode }) {
               <span className="num">=</span>First Market Test
             </li>
           </ol>
+          <p className="v2-note v2-value__use">
+            Não é um certificado. É o documento de trabalho da semana seguinte: a primeira mensagem, as 10 pessoas e a data de revisão
+            já estão dentro. Você copia e usa.
+          </p>
           <div className="v2-value__vs">
             <p>
               <span className="label">Mais conteúdo</span>
