@@ -1,4 +1,13 @@
-// Normalização do payload do webhook do checkout (plataforma ainda não definida).
+// Normalização do payload do webhook do checkout (Disrupty).
+//
+// Contrato confirmado da Disrupty (ajuda.disrupty.com.br/docs/documentacao-dos-webhooks-disrupty):
+// POST, reenvio até 5 vezes sem resposta 2xx, valores em centavos e estes status de pagamento:
+//   paid · authorized · processing · waiting_payment · refused · refunded · chargedback
+// AINDA NÃO confirmado (a página não abriu daqui): os nomes exatos dos campos do JSON e se há
+// assinatura. Por isso os campos são achados por padrão de nome, e o primeiro evento de teste real
+// precisa ser conferido nos logs (`[checkout]`) antes de vender.
+// Hipótese de que o bloqueio depende: o evento de estorno traz o MESMO id de transação do `paid`.
+// Se vier outro id, o estorno não bloqueia ninguém e loga "estorno sem compra registrada" (conferir no 1º estorno de teste).
 
 type Flat = Record<string, string>;
 
@@ -16,22 +25,76 @@ function pick(flat: Flat, key: RegExp, value?: RegExp): string {
   return "";
 }
 
-export function normalize(body: unknown) {
-  const f = flatten(body);
-  const email = pick(f, /(buyer|customer|client|comprador|cliente|contact|user)?.*e-?mail/, /^\S+@\S+\.\S+$/).toLowerCase();
-  const nome = pick(f, /(buyer|customer|client|comprador|cliente|contact).*(first_?name|name|nome)$|^(name|nome)$/);
-  const whatsapp = pick(f, /(phone|telefone|celular|mobile|whatsapp)/).replace(/\D/g, "");
-  const status = pick(f, /(status|event|webhook_event_type|order_status|evento)$/);
-  // sck = "<rota>-<respostas>", repassado pelo quiz no link do checkout.
-  const sck = pick(f, /(^|\.)(sck|src|tracking\.source|utm_content)$/, /^[a-z]+-\d+$/);
-  // Id da transação/pedido (idempotência) e do produto/oferta (só o ALPHA LAUNCH libera acesso).
-  const txn = pick(f, /(^|\.)(transaction|transaction_id|order_id|order_ref|sale_id|purchase\.id|order\.id|payment_id|charge_id)$/);
-  const products = Object.entries(f)
-    .filter(([k]) => /(product|produto|offer|oferta|sku|plan|item)s?(\.\d+)?\.?(id|code|codigo|sku|ucode)$|(^|\.)(sku|product_id|offer_id|offer_code)$/.test(k))
-    .map(([, v]) => v.trim())
-    .filter(Boolean);
-  return { email, nome, whatsapp, status, sck, txn, products };
+/** Status de pagamento da Disrupty. Só `paid` libera acesso; `authorized` ainda não é dinheiro capturado. */
+export const DISRUPTY_STATUS = {
+  approved: ["paid"],
+  revoked: ["refunded", "chargedback"],
+  pending: ["authorized", "processing", "waiting_payment"],
+  refused: ["refused"],
+} as const;
+
+const KNOWN = new Set<string>(Object.values(DISRUPTY_STATUS).flat());
+
+export type Kind = "approved" | "revoked" | null;
+
+export function kindOf(status: string): Kind {
+  const s = status.toLowerCase();
+  if ((DISRUPTY_STATUS.approved as readonly string[]).includes(s)) return "approved";
+  if ((DISRUPTY_STATUS.revoked as readonly string[]).includes(s)) return "revoked";
+  return null;
 }
 
-export const APPROVED = /approved|aprovad|paid|pago|complete|conclu|purchase_approved|order_approved/i;
-export const REVOKED = /refund|reembols|chargeback|estorn|cancel|dispute|protest/i;
+// O payload pode trazer dados de quem vende ou indica (produtor, afiliado…): nunca são do comprador.
+const NOT_BUYER = /(producer|produtor|seller|vendedor|affiliate|afiliado|owner|merchant|company|empresa|store|loja|support|suporte)/;
+const BUYER = /(buyer|customer|client|comprador|cliente|contact)/;
+
+// Campos que identificam a transação, do mais para o menos específico. `id` de topo é o último recurso.
+const TXN_KEYS = [
+  /(^|\.)(transaction|transaction_id|transaction\.id)$/,
+  /(^|\.)(order_id|order_ref|order\.id)$/,
+  /(^|\.)(sale_id|purchase\.id)$/,
+  /(^|\.)(payment_id|charge_id)$/,
+  /^id$/,
+];
+
+/** Valor do comprador: prefere chaves de comprador, ignora as de vendedor. Mais de um valor distinto = ambíguo (""). */
+function buyerField(f: Flat, key: RegExp, value: RegExp, norm: (v: string) => string): string {
+  const all = Object.entries(f).filter(([k, v]) => key.test(k) && !NOT_BUYER.test(k) && value.test(norm(v)));
+  const pool = all.some(([k]) => BUYER.test(k)) ? all.filter(([k]) => BUYER.test(k)) : all;
+  const distinct = [...new Set(pool.map(([, v]) => norm(v)))];
+  return distinct.length === 1 ? distinct[0] : "";
+}
+
+export function normalize(body: unknown) {
+  const f = flatten(body);
+  const email = buyerField(f, /e-?mail/, /^\S+@\S+\.\S+$/, (v) => v.trim().toLowerCase());
+  const nome = pick(f, /(buyer|customer|client|comprador|cliente|contact).*(first_?name|name|nome)$|^(name|nome)$/);
+  const whatsapp = buyerField(f, /(phone|telefone|celular|mobile|whatsapp)/, /^\d{8,}$/, (v) => v.replace(/\D/g, ""));
+  // Status: o valor conhecido da Disrupty nos campos *status. Dois valores conhecidos diferentes (ex.: reembolso
+  // que ainda carrega o `paid` antigo) = ambíguo: não decide pela ordem do JSON. Sem valor conhecido: o primeiro *status (só para log).
+  const statuses = Object.entries(f).filter(([k]) => /(^|\.|_)status$/.test(k));
+  const known = [...new Set(statuses.map(([, v]) => v.trim().toLowerCase()).filter((v) => KNOWN.has(v)))];
+  const ambiguous = known.length > 1 ? known : [];
+  const status = known.length === 1 ? known[0] : known.length ? "" : (statuses[0]?.[1] ?? "").trim().toLowerCase();
+  // sck = "<rota>-<respostas>", repassado pelo quiz no link do checkout (se a Disrupty devolver).
+  const sck = pick(f, /(^|\.)(sck|src|tracking\.source|utm_content)$/, /^[a-z]+-\d+$/);
+  // Id da transação (idempotência e vínculo pagamento ↔ estorno): por prioridade de nome, nunca pela ordem do JSON,
+  // que pode mudar entre o evento `paid` e o de estorno. Dois valores diferentes no mesmo nível = ambíguo ("").
+  let txn = "";
+  for (const key of TXN_KEYS) {
+    const vals = [...new Set(Object.entries(f).filter(([k, v]) => key.test(k) && v.trim()).map(([, v]) => v.trim()))];
+    if (vals.length) {
+      txn = vals.length === 1 ? vals[0] : "";
+      break;
+    }
+  }
+  // Id/código do produto: só o ALPHA LAUNCH (lista em CHECKOUT_PRODUCT_IDS) libera acesso.
+  const products = Object.entries(f)
+    .filter(([k]) => /(product|produto|offer|oferta|sku|plan|item)s?(\.\d+)?\.?(id|code|codigo|sku|ucode|hash)$|(^|\.)(sku|product_id|offer_id|offer_code|product_hash)$/.test(k))
+    .map(([, v]) => v.trim())
+    .filter(Boolean);
+  return { email, nome, whatsapp, status, ambiguous, sck, txn, products };
+}
+
+/** Só os nomes dos campos (sem valores): para descobrir o formato real no primeiro evento sem gravar dados pessoais. */
+export const payloadKeys = (body: unknown) => Object.keys(flatten(body)).slice(0, 60);

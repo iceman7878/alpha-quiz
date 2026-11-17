@@ -8,7 +8,7 @@ Funil de quiz low ticket da ALPHA Enterprises, rodado no Instagram do Victor com
 - Order bump: **ALPHA Content Vault** — R$ 17,97 (hooks, estruturas de reels, CTAs, prompts, ideias de conteúdo). Nada dos templates essenciais do core vai para o bump
 - Sem upsell por enquanto — o mercado decide depois
 - O produto é o 7-Day Build; o app é só o veículo de entrega. Vídeos entram depois, gravados em cima de onde os compradores travarem
-- Plataforma de checkout: **ainda não definida** — link em `NEXT_PUBLIC_CHECKOUT_URL` (`src/config.ts`)
+- Plataforma de checkout: **Disrupty** — link em `NEXT_PUBLIC_CHECKOUT_URL` (`src/config.ts`); webhook em `/api/checkout`
 - Tom: competência, sem promessa de renda, sem escassez artificial, sem linguagem de enriquecimento fácil
 
 ## Fluxo
@@ -53,5 +53,6 @@ body { background: linear-gradient(180deg, var(--campo-top), var(--campo-bottom)
 Design aprovado. Daqui em diante: polish + conversão + operação do funil. Evitar redesign e mudanças grandes no ALPHA LAUNCH.
 
 - **Duas portas / "A porta vazia"** (`TwoDoors` em `src/components/ui.tsx`): elemento especial, só em dois lugares — seção do resultado e abertura do DAY 07. Não usar em hero, quiz, outros dias ou peças novas; perde força se repetir.
-- Webhook do checkout (`/api/checkout`) fica fechado (503) até ter token + assinatura do provider + `CHECKOUT_PRODUCT_IDS`; idempotente via tabela `checkout_events`. Não é produção até validar com eventos reais da plataforma escolhida. `Purchase` do Pixel entra com o checkout real.
+- Webhook do checkout (`/api/checkout`, lógica em `src/lib/checkout-webhook.ts`) fica fechado (503) até ter `CHECKOUT_WEBHOOK_SECRET` (token na URL, mín. 32 caracteres) + `CHECKOUT_PRODUCT_IDS`; assinatura HMAC só se a Disrupty assinar (não confirmado; segredo e header juntos ou 503). Só `paid` libera; `refunded`/`chargedback` bloqueiam a conta que aquela transação liberou (`checkout_events.user_id`, nunca pelo e-mail do estorno; estorno sem compra registrada não bloqueia ninguém); pendentes e recusados não mudam nada. Idempotente via tabela `checkout_events`. Testes: `npx tsx --test tests/*.test.ts`. Não é produção até validar com um evento real da Disrupty. `Purchase` do Pixel entra com o checkout real.
+- Conteúdo pago (`/api/build/content`, regra em `src/lib/content-access.ts`): sessão válida + `access_status = active`. Modo demonstração só em `next dev` sem nenhuma credencial do Supabase; nenhuma variável (nem `NEXT_PUBLIC_DEMO`) o liga em build de produção.
 - Narrativa da área: DAY 01 "Agora começou." → DAY 02–06 construção → DAY 07 "Hoje você entra pela porta vazia."

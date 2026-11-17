@@ -2,19 +2,10 @@
 // se LEAD_WEBHOOK_URL estiver definido, repassa também (Make, Zapier, ManyChat…).
 
 import { NextResponse } from "next/server";
+import { leadRow, type Lead } from "@/lib/lead";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
-
-type Lead = {
-  nome: string;
-  whatsapp: string;
-  email?: string;
-  perfil?: string;
-  r?: string;
-  utm?: Record<string, string>;
-  consentimento: boolean;
-};
 
 const clean = (v: unknown, max = 120) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
@@ -62,7 +53,7 @@ export async function POST(req: Request) {
 
   let saved = false;
   if (db) {
-    const { error } = await db.from("leads").insert({ ...lead, email: lead.email?.toLowerCase() ?? null });
+    const { error } = await db.from("leads").insert(leadRow(lead));
     saved = !error;
     if (error) console.error("[lead] supabase:", error.message);
   }

@@ -18,7 +18,7 @@ npm run build    # build de produção
 |---|---|
 | `NEXT_PUBLIC_CHECKOUT_URL` | Link do checkout. Único lugar a trocar quando a plataforma for definida. |
 | `NEXT_PUBLIC_META_PIXEL_ID` | ID do Meta Pixel. Vazio = pixel desligado. |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Projeto Supabase (Settings → API). Sem elas, `/build` roda em modo demonstração só em desenvolvimento ou com `NEXT_PUBLIC_DEMO=1` (usar apenas no ambiente Preview da Vercel). |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Projeto Supabase (Settings → API). Sem elas, `/build` roda em modo demonstração só em `npm run dev`; em qualquer build de produção (inclusive Preview da Vercel) fica fechado. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Chave service role — só servidor. Grava leads e cria membros. |
 | `CHECKOUT_WEBHOOK_SECRET`, `CHECKOUT_SIGNATURE_SECRET`, `CHECKOUT_SIGNATURE_HEADER`, `CHECKOUT_SIGNATURE_ALGO`, `CHECKOUT_PRODUCT_IDS` | Webhook do checkout: token, assinatura oficial do provider e produtos aceitos. Sem todas, o webhook responde 503 e não libera ninguém. |
 | `NEXT_PUBLIC_SITE_URL` | Domínio final, usado no link do convite. |
@@ -55,7 +55,7 @@ Rotas: `/entrar` (login), `/definir-senha` (destino do convite e da recuperaçã
 - **Conteúdo dos 7 dias** (`src/lib/build-content.ts`) só existe no servidor. É entregue por `/api/build/content` apenas para sessão válida + `access_status = active` — não vai no JavaScript público.
 - **Progresso e respostas**: tabela `progress` (uma linha por dia, respostas em JSONB, salvamento automático).
 - **Build Score**: colunas `score`, `level`, `score_answers` em `members`.
-- **Modo demonstração** (dados só no navegador): apenas em desenvolvimento ou com `NEXT_PUBLIC_DEMO=1`. Em produção sem Supabase, `/build` mostra "Área em configuração" e nada do produto é aberto.
+- **Modo demonstração** (dados só no navegador): apenas em `npm run dev` sem nenhuma credencial do Supabase (regra em `src/lib/content-access.ts`). Em build de produção sem Supabase completo, `/build` mostra "Área em configuração" e nada do produto é aberto; `NEXT_PUBLIC_DEMO` não tem mais efeito.
 
 ### Banco (`supabase/schema.sql`)
 
@@ -99,7 +99,7 @@ Visão `crm_build`: quem comprou → dias concluídos → nível (só pelo paine
 | `NEXT_PUBLIC_META_PIXEL_ID` | ID do pixel |
 | `NEXT_PUBLIC_MENTORSHIP_URL` | link da aplicação (opcional) |
 
-   **Não** definir `NEXT_PUBLIC_DEMO` em produção.
+   `NEXT_PUBLIC_DEMO` não é usada (o modo demonstração não existe em build de produção).
 3. Deploy. Variáveis `NEXT_PUBLIC_*` entram no build: depois de alterar alguma, fazer **Redeploy**.
 4. Domínio próprio em **Settings → Domains** e repetir o domínio no passo 4 do Supabase.
 
@@ -111,11 +111,11 @@ Cadastrar o webhook na plataforma: `https://<dominio>/api/checkout?token=<CHECKO
 |---|---|
 | Compra aprovada | cria o usuário, envia o convite, `access_status = active` |
 | Recompra de quem já tem conta | `access_status = active` (sem novo convite; entra ou recupera a senha) |
-| Reembolso / chargeback / cancelamento | `access_status = blocked` — perde o acesso ao conteúdo e aos dados; nada é apagado |
+| Reembolso / chargeback (`refunded`, `chargedback`) | `access_status = blocked` na conta que **essa transação** liberou (achada pela transação, não pelo e-mail do estorno); continua ativo se a conta tiver outra compra paga e não reembolsada; nada é apagado |
 
-Só libera acesso com: token + assinatura HMAC válida do corpo bruto + produto em `CHECKOUT_PRODUCT_IDS` + status reconhecido + id de transação. Cada transação/tipo é processado uma vez (tabela `checkout_events` — rodar o `schema.sql` atualizado).
+Só libera acesso com: token (mín. 32 caracteres) + assinatura HMAC, se configurada + produto em `CHECKOUT_PRODUCT_IDS` + status `paid` + id de transação + e-mail do comprador. Cada transação/tipo é processado uma vez (tabela `checkout_events`, que também guarda a conta liberada por transação — rodar o `schema.sql` atualizado). Regras e testes: `src/lib/checkout-webhook.ts`, `tests/checkout-webhook.test.ts`.
 
-A plataforma ainda não foi escolhida: o webhook reconhece os formatos mais comuns (e-mail, nome, telefone, status, transação, produto, `sck`). **Não é produção até ser validado com eventos de teste reais** da plataforma escolhida — inclusive o formato exato da assinatura (alguns providers assinam com timestamp ou usam token em vez de HMAC; ajustar `validSignature` em `src/app/api/checkout/route.ts`). O evento `Purchase` do Pixel entra junto com o checkout real.
+Plataforma: Disrupty. Os nomes dos campos e a assinatura ainda não foram confirmados na documentação oficial; o webhook reconhece os formatos mais comuns. **Não é produção até ser validado com eventos de teste reais** — inclusive se o estorno traz o mesmo id de transação do `paid`. O evento `Purchase` do Pixel entra junto com o checkout real.
 
 ### 4. Teste de ponta a ponta (depois de configurar)
 

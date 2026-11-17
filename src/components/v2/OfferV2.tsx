@@ -116,6 +116,11 @@ export function OfferV2(props: { cta: ReactNode }) {
           <span className="label v2-ch">04 — The system</span>
           <h2 className="v2-sys__name">Isto é o ALPHA LAUNCH.</h2>
         </Reveal>
+        {/* O objeto que acabou de se montar sai de cena e volta em detalhe: as arestas das 7 camadas
+            (o mesmo pôster já usado no preço; o BUILD CORE em si não é tocado). */}
+        <Reveal i={2} className="v2-sys__detail">
+          <img src="/v2/core-2.webp" alt="" loading="lazy" decoding="async" />
+        </Reveal>
         <Reveal i={1} className="v2-sys__body">
           <p className="v2-sys__lead">Um sistema de 7 dias que transforma uma direção em uma oferta pronta para ir ao mercado.</p>
           <p className="v2-note">Cada dia termina com um entregável. O que você constrói hoje é a base de amanhã.</p>

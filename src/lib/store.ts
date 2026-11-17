@@ -1,14 +1,15 @@
 // Camada de dados do app: Supabase Auth + tabelas `members` e `progress`.
-// Modo demonstração (tudo no navegador) só em desenvolvimento ou com NEXT_PUBLIC_DEMO=1.
-// Em produção sem Supabase: "misconfigured" — nada do produto é aberto.
+// Modo demonstração (tudo no navegador) só em `next dev` sem Supabase (mesma regra do servidor: lib/content-access).
+// Em build de produção sem Supabase completo: "misconfigured" — nada do produto é aberto.
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { demoAllowed } from "./content-access";
 import { decodeAnswers, scoreAnswers, type RouteKey } from "./quiz";
 import type { Answers, BuildContent, Level } from "./build";
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-const DEMO_ALLOWED = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_DEMO === "1";
+const DEMO_ALLOWED = demoAllowed({ nodeEnv: process.env.NODE_ENV, supabaseUrl: URL, anonKey: ANON });
 
 export type Mode = "supabase" | "demo" | "misconfigured";
 export const mode: Mode = URL && ANON ? "supabase" : DEMO_ALLOWED ? "demo" : "misconfigured";

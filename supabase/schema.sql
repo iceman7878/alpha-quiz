@@ -107,8 +107,10 @@ create table if not exists public.checkout_events (
   txn        text not null,
   kind       text not null,
   status     text,
-  email      text
+  email      text,
+  user_id    uuid                       -- no "approved": conta que esta transação liberou (o estorno bloqueia esta)
 );
+alter table public.checkout_events add column if not exists user_id uuid;
 alter table public.checkout_events enable row level security;
 revoke all on public.checkout_events from anon, authenticated;
 

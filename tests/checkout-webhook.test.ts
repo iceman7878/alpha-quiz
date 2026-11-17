@@ -1,0 +1,755 @@
+// Testes do webhook do checkout com um Supabase falso em memória (nada de rede, nada de banco real).
+// Rodar: npx tsx --test tests/*.test.ts
+//
+// ATENÇÃO: o payload abaixo é ILUSTRATIVO. Os nomes de campo reais da Disrupty ainda não foram
+// confirmados; estes testes validam as regras (status, idempotência, produto, assinatura, acesso),
+// não o contrato da plataforma. O primeiro evento de teste real confere o formato.
+
+import { test, beforeEach } from "node:test";
+import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { handleCheckoutWebhook, webhookEnv, type WebhookEnv } from "../src/lib/checkout-webhook";
+import { kindOf } from "../src/lib/checkout";
+import { leadRow } from "../src/lib/lead";
+import { buildCheckoutUrl } from "../src/lib/tracking";
+import { CHECKOUT_PREFILL } from "../src/config";
+
+type Row = Record<string, unknown>;
+
+function fakeDb(
+  opts: {
+    users?: Record<string, string>;
+    leads?: Row[];
+    failInvite?: boolean;
+    failUpsert?: boolean;
+    failSelect?: string;
+    failDelete?: boolean;
+    failUpdate?: string;
+    /** Roda antes de gravar uma linha (para simular outra entrega no meio). */
+    beforeInsert?: (t: string, row: Row) => Promise<void> | void;
+  } = {},
+) {
+  const tables: Record<string, Row[]> = { checkout_events: [], members: [], leads: [...(opts.leads ?? [])] };
+  const users = new Map(Object.entries(opts.users ?? {}));
+  const invites: { email: string; redirectTo?: string }[] = [];
+  let failInvite = !!opts.failInvite;
+  let n = 0;
+
+  const rows = (t: string) => (tables[t] ??= []);
+  const query = (t: string, filter: (r: Row) => boolean) => {
+    const error = opts.failSelect === t ? { message: "select falhou" } : null;
+    const found = () => (error ? [] : rows(t).filter(filter));
+    const list = {
+      eq: (c: string, v: unknown) => query(t, (r) => filter(r) && r[c] === v),
+      in: (c: string, vs: unknown[]) => query(t, (r) => filter(r) && vs.includes(r[c])),
+      order: () => list,
+      limit: (k: number) => ({ data: error ? null : [...found()].reverse().slice(0, k), error }),
+      maybeSingle: () => ({ data: error ? null : (found()[0] ?? null), error }),
+      // `await db.from().select().eq()` sem order/limit (supabase-js devolve { data, error }).
+      get data() {
+        return error ? null : found();
+      },
+      error,
+    };
+    return list;
+  };
+
+  const db = {
+    from(t: string) {
+      return {
+        select: () => ({
+          eq: (c: string, v: unknown) => query(t, (r) => r[c] === v),
+          in: (c: string, vs: unknown[]) => query(t, (r) => vs.includes(r[c])),
+          like: (c: string, p: string) => query(t, (r) => String(r[c] ?? "").endsWith(p.replace(/^%/, ""))),
+        }),
+        async insert(row: Row) {
+          await opts.beforeInsert?.(t, row);
+          if (t === "checkout_events" && rows(t).some((r) => r.id === row.id)) return { error: { code: "23505", message: "duplicate key" } };
+          rows(t).push({ ...row });
+          return { error: null };
+        },
+        delete: () => ({
+          eq(c: string, v: unknown) {
+            if (opts.failDelete) return { error: { message: "delete falhou" } };
+            tables[t] = rows(t).filter((r) => r[c] !== v);
+            return { error: null };
+          },
+        }),
+        update: (patch: Row) => ({
+          eq(c: string, v: unknown) {
+            if (opts.failUpdate === t) return { error: { message: "update falhou" } };
+            for (const r of rows(t)) if (r[c] === v) Object.assign(r, patch);
+            return { error: null };
+          },
+        }),
+        upsert(row: Row) {
+          if (opts.failUpsert) return { error: { message: "upsert falhou" } };
+          const cur = rows(t).find((r) => r.id === row.id);
+          if (cur) Object.assign(cur, row);
+          else rows(t).push({ ...row });
+          return { error: null };
+        },
+      };
+    },
+    auth: {
+      admin: {
+        async inviteUserByEmail(email: string, o?: { redirectTo?: string }) {
+          if (failInvite) return { data: { user: null }, error: { message: "SMTP indisponível" } };
+          invites.push({ email, redirectTo: o?.redirectTo });
+          if (users.has(email)) return { data: { user: null }, error: { message: "A user with this email address has already been registered" } };
+          const id = `user-${++n}`;
+          users.set(email, id);
+          return { data: { user: { id } }, error: null };
+        },
+      },
+    },
+    async rpc(fn: string, args: { p_email: string }) {
+      assert.equal(fn, "user_id_by_email");
+      return { data: users.get(args.p_email) ?? null, error: null };
+    },
+  };
+
+  return {
+    db: db as unknown as SupabaseClient,
+    tables,
+    invites,
+    users,
+    opts,
+    setFailInvite: (v: boolean) => (failInvite = v),
+  };
+}
+
+const TOKEN = "tok-0123456789abcdef0123456789abcdef";
+const env = (over: Partial<WebhookEnv> = {}): WebhookEnv => ({
+  ...webhookEnv({ CHECKOUT_WEBHOOK_SECRET: TOKEN, CHECKOUT_PRODUCT_IDS: "prod-alpha, prod-alpha-2", NEXT_PUBLIC_SITE_URL: "https://alpha.test" }),
+  ...over,
+});
+
+const EMAIL = "Comprador@Exemplo.com";
+const payload = (over: Record<string, unknown> = {}) => ({
+  status: "paid",
+  transaction: { id: "txn-1" },
+  product: { id: "prod-alpha" },
+  customer: { name: "Ana Souza", email: EMAIL, phone: "+55 (11) 98888-7777" },
+  tracking: { sck: "servico-012", utm_source: "instagram" },
+  amount: 6797,
+  ...over,
+});
+
+function req(body: unknown, { token = TOKEN, headers = {} as Record<string, string> } = {}) {
+  const raw = typeof body === "string" ? body : JSON.stringify(body);
+  return new Request(`https://alpha.test/api/checkout${token ? `?token=${token}` : ""}`, { method: "POST", body: raw, headers });
+}
+
+// Logs: capturados para checar que não vaza dado pessoal.
+let logs: string[] = [];
+beforeEach(() => {
+  logs = [];
+  for (const k of ["info", "warn", "error"] as const) console[k] = (...a: unknown[]) => void logs.push(JSON.stringify(a));
+});
+const noPii = () => {
+  const all = logs.join("\n").toLowerCase();
+  for (const s of ["comprador@exemplo.com", "ana souza", "98888"]) assert.ok(!all.includes(s), `log vazou "${s}"`);
+};
+
+// ---------- configuração e segurança ----------
+
+// [PLANO B] Testes deste trecho (linhas 141–329 do original) reescritos em 17/11/2026: o original se perdeu com o container.
+// Mesmos nomes e mesmas regras do r3; o corpo é novo.
+
+test("sem token ou sem produto configurado: 503 (fechado)", async () => {
+  const f = fakeDb();
+  for (const e of [env({ token: "" }), env({ productIds: [] })]) {
+    const r = await handleCheckoutWebhook(req(payload()), e, f.db);
+    assert.deepEqual([r.status, r.body.error], [503, "webhook não configurado"]);
+  }
+  assert.equal(f.invites.length, 0);
+  assert.equal(f.tables.checkout_events.length, 0);
+});
+
+test("token errado ou ausente: 401; token no header x-webhook-token é aceito", async () => {
+  const f = fakeDb();
+  assert.equal((await handleCheckoutWebhook(req(payload(), { token: "tok-errado-0123456789abcdef0123456789" }), env(), f.db)).status, 401);
+  assert.equal((await handleCheckoutWebhook(req(payload(), { token: "" }), env(), f.db)).status, 401);
+  assert.equal(f.tables.checkout_events.length, 0);
+  const r = await handleCheckoutWebhook(req(payload(), { token: "", headers: { "x-webhook-token": TOKEN } }), env(), f.db);
+  assert.deepEqual([r.status, r.body.action], [200, "invited"]);
+});
+
+test("JSON malformado ou não-objeto: 400, sem escrita", async () => {
+  const f = fakeDb();
+  for (const raw of ["{nao é json", "42", "null", '"texto"']) {
+    const r = await handleCheckoutWebhook(req(raw), env(), f.db);
+    assert.deepEqual([r.status, r.body.error], [400, "json"], raw);
+  }
+  assert.equal(f.tables.checkout_events.length, 0);
+  assert.equal(f.invites.length, 0);
+});
+
+test("assinatura configurada: ausente/errada → 401; correta (hex, base64, prefixo sha256=) → 200", async () => {
+  const secret = "segredo-de-assinatura";
+  const e = env({ signatureSecret: secret, signatureHeader: "x-signature" });
+  const raw = JSON.stringify(payload());
+  const mac = createHmac("sha256", secret).update(raw, "utf8").digest();
+  const f = fakeDb();
+  assert.equal((await handleCheckoutWebhook(req(raw), e, f.db)).status, 401);
+  assert.equal((await handleCheckoutWebhook(req(raw, { headers: { "x-signature": "abc123" } }), e, f.db)).status, 401);
+  assert.equal(f.tables.checkout_events.length, 0);
+  for (const sig of [mac.toString("hex"), mac.toString("base64"), `sha256=${mac.toString("hex")}`]) {
+    const g = fakeDb();
+    const r = await handleCheckoutWebhook(req(raw, { headers: { "x-signature": sig } }), e, g.db);
+    assert.deepEqual([r.status, r.body.action], [200, "invited"], sig);
+  }
+});
+
+test("assinatura não configurada: só o token é exigido", async () => {
+  const f = fakeDb();
+  const r = await handleCheckoutWebhook(req(payload()), env(), f.db);
+  assert.deepEqual([r.status, r.body.action], [200, "invited"]);
+});
+
+test("sem Supabase configurado: 500 (a Disrupty reenvia)", async () => {
+  const r = await handleCheckoutWebhook(req(payload()), env(), null);
+  assert.deepEqual([r.status, r.body.error], [500, "supabase não configurado"]);
+  const ignored = await handleCheckoutWebhook(req(payload({ status: "processing" })), env(), null);
+  assert.equal(ignored.status, 200);
+});
+
+test("kindOf: só paid aprova; refunded/chargedback revogam; o resto não muda nada", () => {
+  assert.equal(kindOf("paid"), "approved");
+  assert.equal(kindOf("PAID"), "approved");
+  assert.equal(kindOf("refunded"), "revoked");
+  assert.equal(kindOf("chargedback"), "revoked");
+  for (const s of ["authorized", "processing", "waiting_payment", "refused", "approved", "chargeback", "", "algo_novo"]) assert.equal(kindOf(s), null, s);
+});
+
+test("pagamento aprovado (paid): convida, ativa o membro com a rota do sck e registra o evento", async () => {
+  const f = fakeDb();
+  const r = await handleCheckoutWebhook(req(payload()), env(), f.db);
+  assert.deepEqual([r.status, r.body.action], [200, "invited"]);
+  assert.deepEqual(f.invites, [{ email: "comprador@exemplo.com", redirectTo: "https://alpha.test/definir-senha" }]);
+  assert.equal(f.tables.members.length, 1);
+  const m = f.tables.members[0];
+  assert.equal(m.email, "comprador@exemplo.com");
+  assert.equal(m.access_status, "active");
+  assert.equal(m.r, "012");
+  assert.equal(typeof m.route, "string");
+  assert.equal(m.whatsapp, "5511988887777");
+  assert.equal(m.nome, "Ana Souza");
+  // Dados da compra guardados para auditoria/idempotência.
+  assert.deepEqual(f.tables.checkout_events, [{ id: "txn-1:approved", txn: "txn-1", kind: "approved", status: "paid", email: "comprador@exemplo.com", user_id: m.id }]);
+  noPii();
+});
+
+test("status em maiúsculas (PAID) também aprova", async () => {
+  const f = fakeDb();
+  const r = await handleCheckoutWebhook(req(payload({ status: "PAID" })), env(), f.db);
+  assert.equal(r.body.action, "invited");
+  assert.equal(f.tables.members[0].access_status, "active");
+});
+
+test("campo status de outra coisa não confunde: vale o status de pagamento conhecido", async () => {
+  const f = fakeDb();
+  const body = { ...payload(), shipping: { status: "pending_delivery" }, customer: { name: "Ana Souza", email: EMAIL, phone: "+55 (11) 98888-7777", status: "active" } };
+  const r = await handleCheckoutWebhook(req(body), env(), f.db);
+  assert.equal(r.body.action, "invited");
+});
+
+for (const status of ["authorized", "processing", "waiting_payment", "refused", "algo_novo"]) {
+  test(`status ${status}: 200 ignorado, nenhum acesso e nenhuma escrita`, async () => {
+    const f = fakeDb();
+    const r = await handleCheckoutWebhook(req(payload({ status })), env(), f.db);
+    assert.deepEqual([r.status, r.body.action], [200, "ignored"]);
+    assert.equal(f.invites.length, 0);
+    assert.equal(f.tables.members.length, 0);
+    assert.equal(f.tables.checkout_events.length, 0);
+  });
+}
+
+test("pendente e depois paid: só o paid libera", async () => {
+  const f = fakeDb();
+  await handleCheckoutWebhook(req(payload({ status: "waiting_payment" })), env(), f.db);
+  assert.equal(f.tables.members.length, 0);
+  const r = await handleCheckoutWebhook(req(payload()), env(), f.db);
+  assert.equal(r.body.action, "invited");
+  assert.equal(f.tables.members[0].access_status, "active");
+});
+
+test("evento duplicado (reenvio): sem segundo convite nem segunda linha", async () => {
+  const f = fakeDb();
+  await handleCheckoutWebhook(req(payload()), env(), f.db);
+  const r = await handleCheckoutWebhook(req(payload()), env(), f.db);
+  assert.deepEqual([r.status, r.body.action], [200, "duplicate"]);
+  assert.equal(f.invites.length, 1);
+  assert.equal(f.tables.members.length, 1);
+  assert.equal(f.tables.checkout_events.length, 1);
+});
+
+test("falha no convite: 500, marca desfeita; o reenvio seguinte processa", async () => {
+  const f = fakeDb({ failInvite: true });
+  const r = await handleCheckoutWebhook(req(payload()), env(), f.db);
+  assert.deepEqual([r.status, r.body.error], [500, "invite"]);
+  assert.equal(f.tables.checkout_events.length, 0);
+  assert.equal(f.tables.members.length, 0);
+  f.setFailInvite(false);
+  assert.equal((await handleCheckoutWebhook(req(payload()), env(), f.db)).body.action, "invited");
+  assert.equal(f.tables.members[0].access_status, "active");
+  noPii();
+});
+
+test("falha ao gravar o membro: 500 e marca desfeita", async () => {
+  const f = fakeDb({ failUpsert: true });
+  const r = await handleCheckoutWebhook(req(payload()), env(), f.db);
+  assert.deepEqual([r.status, r.body.error], [500, "db"]);
+  assert.equal(f.tables.checkout_events.length, 0);
+  assert.equal(f.tables.members.length, 0);
+});
+
+test("outro produto: 200 ignorado, sem acesso", async () => {
+  const f = fakeDb();
+  const r = await handleCheckoutWebhook(req(payload({ product: { id: "prod-outro" } })), env(), f.db);
+  assert.deepEqual([r.status, r.body.action, r.body.reason], [200, "ignored", "produto"]);
+  assert.equal(f.invites.length, 0);
+  assert.equal(f.tables.checkout_events.length, 0);
+  noPii();
+});
+
+test("sem campo de produto: ignorado (não libera por omissão)", async () => {
+  const f = fakeDb();
+  const body: Record<string, unknown> = payload();
+  delete body.product;
+  const r = await handleCheckoutWebhook(req(body), env(), f.db);
+  assert.deepEqual([r.status, r.body.action], [200, "ignored"]);
+  assert.equal(f.invites.length, 0);
+});
+
+test("segundo id da lista CHECKOUT_PRODUCT_IDS também libera; lista em itens também é lida", async () => {
+  const a = fakeDb();
+  assert.equal((await handleCheckoutWebhook(req(payload({ product: { id: "prod-alpha-2" } })), env(), a.db)).body.action, "invited");
+  const b = fakeDb();
+  const body: Record<string, unknown> = payload({ items: [{ product_id: "prod-bump" }, { product_id: "prod-alpha" }] });
+  delete body.product;
+  assert.equal((await handleCheckoutWebhook(req(body), env(), b.db)).body.action, "invited");
+});
+
+for (const status of ["refunded", "chargedback"]) {
+  test(`${status}: bloqueia o acesso (dados mantidos)`, async () => {
+    const f = fakeDb();
+    await handleCheckoutWebhook(req(payload()), env(), f.db);
+    const r = await handleCheckoutWebhook(req(payload({ status })), env(), f.db);
+    assert.deepEqual([r.status, r.body.action], [200, "blocked"]);
+    const m = f.tables.members[0];
+    assert.equal(m.access_status, "blocked");
+    assert.equal(m.r, "012");
+    assert.equal(f.tables.members.length, 1);
+  });
+}
+
+test("paid atrasado depois do reembolso da mesma transação não reativa", async () => {
+  const f = fakeDb();
+  await handleCheckoutWebhook(req(payload()), env(), f.db);
+  await handleCheckoutWebhook(req(payload({ status: "refunded" })), env(), f.db);
+  f.tables.checkout_events = f.tables.checkout_events.filter((e) => e.kind !== "approved"); // simula paid nunca processado
+  const r = await handleCheckoutWebhook(req(payload()), env(), f.db);
+  assert.equal(r.body.reason, "já reembolsada");
+  assert.equal(f.tables.members[0].access_status, "blocked");
+});
+
+test("nova compra (outra transação) depois do reembolso reativa", async () => {
+  const f = fakeDb();
+  await handleCheckoutWebhook(req(payload()), env(), f.db);
+  await handleCheckoutWebhook(req(payload({ status: "refunded" })), env(), f.db);
+  const r = await handleCheckoutWebhook(req(payload({ transaction: { id: "txn-2" } })), env(), f.db);
+  assert.equal(r.body.action, "reactivated");
+  assert.equal(f.tables.members[0].access_status, "active");
+});
+
+test("reembolso sem membro (nunca liberado): 200, nada criado", async () => {
+  const f = fakeDb();
+  const r = await handleCheckoutWebhook(req(payload({ status: "refunded" })), env(), f.db);
+  assert.deepEqual([r.status, r.body.action, r.body.reason], [200, "ignored", "sem compra"]);
+  assert.equal(f.tables.members.length, 0);
+});
+
+// ---------- comprador novo x existente ----------
+
+test("comprador que já tem conta: reativa via user_id_by_email, sem criar outro usuário", async () => {
+  const f = fakeDb({ users: { "comprador@exemplo.com": "user-antigo" } });
+  f.tables.members.push({ id: "user-antigo", email: "comprador@exemplo.com", access_status: "blocked", score: 5 });
+  const r = await handleCheckoutWebhook(req(payload()), env(), f.db);
+  assert.equal(r.body.action, "reactivated");
+  assert.equal(f.tables.members.length, 1);
+  const m = f.tables.members[0];
+  assert.equal(m.id, "user-antigo");
+  assert.equal(m.access_status, "active");
+  assert.equal(m.score, 5);
+});
+
+test("recompra sem sck nem lead: não apaga a rota já salva", async () => {
+  const f = fakeDb({ users: { "comprador@exemplo.com": "user-antigo" } });
+  f.tables.members.push({ id: "user-antigo", email: "comprador@exemplo.com", access_status: "blocked", r: "210", route: "produto" });
+  const body: Record<string, unknown> = payload();
+  delete body.tracking;
+  await handleCheckoutWebhook(req(body), env(), f.db);
+  assert.deepEqual([f.tables.members[0].r, f.tables.members[0].route], ["210", "produto"]);
+});
+
+// ---------- rota pelo lead do quiz ----------
+
+test("sem sck: rota vem do lead mais recente pelo e-mail", async () => {
+  const f = fakeDb({ leads: [{ email: "comprador@exemplo.com", whatsapp: "11988887777", r: "000" }, { email: "comprador@exemplo.com", whatsapp: "11988887777", r: "111" }] });
+  const body: Record<string, unknown> = payload();
+  delete body.tracking;
+  await handleCheckoutWebhook(req(body), env(), f.db);
+  assert.equal(f.tables.members[0].r, "111");
+});
+
+test("sem sck e e-mail diferente no checkout: rota vem do lead pelo WhatsApp (8 últimos dígitos)", async () => {
+  const f = fakeDb({ leads: [{ email: "outro@exemplo.com", whatsapp: "11988887777", r: "201" }] });
+  const body: Record<string, unknown> = payload();
+  delete body.tracking;
+  await handleCheckoutWebhook(req(body), env(), f.db);
+  assert.equal(f.tables.members[0].r, "201");
+});
+
+test("sck inválido é descartado e não quebra", async () => {
+  const f = fakeDb();
+  const r = await handleCheckoutWebhook(req(payload({ tracking: { sck: "servico-999999" } })), env(), f.db);
+  assert.equal(r.body.action, "invited");
+  assert.equal(f.tables.members[0].r, undefined);
+});
+
+// ---------- payload incompleto ----------
+
+test("paid sem e-mail ou sem transação: 422, sem escrita, sem PII no log", async () => {
+  const f = fakeDb();
+  const a = await handleCheckoutWebhook(req(payload({ customer: { name: "Ana Souza" } })), env(), f.db);
+  const b = await handleCheckoutWebhook(req(payload({ transaction: undefined })), env(), f.db);
+  assert.equal(a.status, 422);
+  assert.equal(b.status, 422);
+  assert.equal(f.tables.checkout_events.length, 0);
+  assert.equal(f.invites.length, 0);
+  noPii();
+});
+
+// ---------- auditoria 29/10: configuração, ambiguidade, ordem e corrida ----------
+
+test("configuração inválida fecha (503) sem revelar o motivo: token curto, assinatura pela metade", async () => {
+  const f = fakeDb();
+  const cases = [env({ token: "curto-demais" }), env({ signatureSecret: "s3cr3t" }), env({ signatureHeader: "x-signature" })];
+  for (const e of cases) {
+    const r = await handleCheckoutWebhook(req(payload(), { token: e.token }), e, f.db);
+    assert.deepEqual([r.status, r.body.error], [503, "webhook não configurado"]);
+  }
+  assert.equal(f.invites.length, 0);
+});
+
+test("status ambíguo (dois status conhecidos diferentes): 422 nas duas ordens do JSON, nada muda", async () => {
+  for (const body of [payload({ status: "paid", payment: { status: "refunded" } }), { payment: { status: "refunded" }, ...payload({ status: "paid" }) }]) {
+    const f = fakeDb();
+    const r = await handleCheckoutWebhook(req(body), env(), f.db);
+    assert.deepEqual([r.status, r.body.error], [422, "status ambíguo"]);
+    assert.equal(f.invites.length, 0);
+    assert.equal(f.tables.checkout_events.length, 0);
+  }
+  // O mesmo status repetido em dois campos não é ambíguo.
+  const f = fakeDb();
+  const r = await handleCheckoutWebhook(req(payload({ payment: { status: "paid" } })), env(), f.db);
+  assert.equal(r.body.action, "invited");
+});
+
+test("e-mail e telefone do produtor/afiliado no payload não recebem o acesso", async () => {
+  const f = fakeDb();
+  const body = { producer: { email: "produtor@alpha.test", phone: "5511900001111" }, affiliate: { email: "afiliado@x.test" }, ...payload() };
+  const r = await handleCheckoutWebhook(req(body), env(), f.db);
+  assert.equal(r.body.action, "invited");
+  assert.deepEqual(f.invites.map((i) => i.email), ["comprador@exemplo.com"]);
+  assert.equal(f.tables.members[0].whatsapp, "5511988887777");
+});
+
+test("dois e-mails possíveis e nenhum marcado como do comprador: 422, ninguém recebe acesso", async () => {
+  const f = fakeDb();
+  const r = await handleCheckoutWebhook(req(payload({ customer: { name: "Ana Souza" }, email: "a@x.test", user: { email: "b@x.test" } })), env(), f.db);
+  assert.equal(r.status, 422);
+  assert.equal(f.invites.length, 0);
+  noPii();
+});
+
+test("pagou duas vezes e estornou uma: acesso continua; estorno da segunda bloqueia", async () => {
+  const f = fakeDb();
+  await handleCheckoutWebhook(req(payload()), env(), f.db);
+  await handleCheckoutWebhook(req(payload({ transaction: { id: "txn-2" } })), env(), f.db);
+  const a = await handleCheckoutWebhook(req(payload({ status: "refunded" })), env(), f.db);
+  assert.equal(a.body.action, "kept");
+  assert.equal(f.tables.members[0].access_status, "active");
+  const b = await handleCheckoutWebhook(req(payload({ status: "chargedback", transaction: { id: "txn-2" } })), env(), f.db);
+  assert.equal(b.body.action, "blocked");
+  assert.equal(f.tables.members[0].access_status, "blocked");
+  const c = await handleCheckoutWebhook(req(payload({ status: "refunded" })), env(), f.db);
+  assert.equal(c.body.action, "duplicate");
+  assert.equal(f.tables.members[0].access_status, "blocked");
+});
+
+test("reenvio do estorno antigo depois de uma nova compra não bloqueia", async () => {
+  const f = fakeDb();
+  await handleCheckoutWebhook(req(payload()), env(), f.db);
+  await handleCheckoutWebhook(req(payload({ status: "refunded" })), env(), f.db);
+  await handleCheckoutWebhook(req(payload({ transaction: { id: "txn-2" } })), env(), f.db);
+  const r = await handleCheckoutWebhook(req(payload({ status: "refunded" })), env(), f.db);
+  assert.deepEqual([r.status, r.body.action], [200, "duplicate"]);
+  assert.equal(f.tables.members[0].access_status, "active");
+});
+
+test("estorno chega antes do paid (fora de ordem): o paid atrasado não libera", async () => {
+  const f = fakeDb();
+  await handleCheckoutWebhook(req(payload({ status: "chargedback" })), env(), f.db);
+  const r = await handleCheckoutWebhook(req(payload()), env(), f.db);
+  assert.equal(r.body.reason, "já reembolsada");
+  assert.equal(f.invites.length, 0);
+  assert.equal(f.tables.members.length, 0);
+});
+
+test("reenvio encontra a marca sem o acesso pronto (outra entrega processando): 409, não 200", async () => {
+  const f = fakeDb();
+  f.tables.checkout_events.push({ id: "txn-1:approved", txn: "txn-1", kind: "approved", status: "paid", email: "comprador@exemplo.com" });
+  const r = await handleCheckoutWebhook(req(payload()), env(), f.db);
+  assert.deepEqual([r.status, r.body.error], [409, "em processamento"]);
+  assert.equal(f.invites.length, 0);
+});
+
+test("duas entregas simultâneas do mesmo paid: um convite só; a outra é 409 ou duplicado com acesso pronto", async () => {
+  const f = fakeDb();
+  const rs = await Promise.all([handleCheckoutWebhook(req(payload()), env(), f.db), handleCheckoutWebhook(req(payload()), env(), f.db)]);
+  assert.equal(f.invites.length, 1);
+  assert.equal(rs.filter((r) => r.body.action === "invited").length, 1);
+  const other = rs.find((r) => r.body.action !== "invited")!;
+  assert.ok(other.status === 409 || (other.body.action === "duplicate" && f.tables.members[0].access_status === "active"));
+});
+
+test("falha no meio e a marca não pôde ser desfeita: reenvio recebe 409, nunca 200 sem acesso", async () => {
+  const f = fakeDb({ failInvite: true, failDelete: true });
+  assert.equal((await handleCheckoutWebhook(req(payload()), env(), f.db)).status, 500);
+  f.setFailInvite(false);
+  const r = await handleCheckoutWebhook(req(payload()), env(), f.db);
+  assert.equal(r.status, 409);
+  assert.equal(f.tables.members.length, 0);
+});
+
+test("erro ao consultar reembolso: 500 e nenhum acesso", async () => {
+  const f = fakeDb({ failSelect: "checkout_events" });
+  const r = await handleCheckoutWebhook(req(payload()), env(), f.db);
+  assert.equal(r.status, 500);
+  assert.equal(f.invites.length, 0);
+  assert.equal(f.tables.checkout_events.length, 0);
+});
+
+test("erro de banco no estorno: 500, marca mantida (barra o paid atrasado), acesso não muda; o reenvio bloqueia", async () => {
+  const f = fakeDb();
+  await handleCheckoutWebhook(req(payload()), env(), f.db);
+  f.opts.failSelect = "checkout_events";
+  const r = await handleCheckoutWebhook(req(payload({ status: "refunded" })), env(), f.db);
+  assert.equal(r.status, 500);
+  f.opts.failSelect = undefined;
+  assert.deepEqual(f.tables.checkout_events.map((e) => e.id), ["txn-1:approved", "txn-1:revoked"]);
+  assert.equal(f.tables.members[0].access_status, "active");
+  // Reenvio do paid nesse intervalo: não reativa e aplica o bloqueio pendente.
+  assert.equal((await handleCheckoutWebhook(req(payload()), env(), f.db)).body.reason, "já reembolsada");
+  assert.equal(f.tables.members[0].access_status, "blocked");
+  // Reenvio do estorno com o banco de volta: duplicado, segue bloqueado.
+  assert.equal((await handleCheckoutWebhook(req(payload({ status: "refunded" })), env(), f.db)).body.action, "duplicate");
+  assert.equal(f.tables.members[0].access_status, "blocked");
+});
+
+test("erro ao bloquear no estorno: 500 e o reenvio bloqueia", async () => {
+  const f = fakeDb();
+  await handleCheckoutWebhook(req(payload()), env(), f.db);
+  f.opts.failUpdate = "members";
+  assert.equal((await handleCheckoutWebhook(req(payload({ status: "refunded" })), env(), f.db)).status, 500);
+  f.opts.failUpdate = undefined;
+  assert.equal(f.tables.members[0].access_status, "active");
+  assert.deepEqual([(await handleCheckoutWebhook(req(payload({ status: "refunded" })), env(), f.db)).status, f.tables.members[0].access_status], [200, "blocked"]);
+});
+
+// ---------- auditoria 29/10 (2ª rodada) ----------
+
+test("id da transação não depende da ordem das chaves: estorno com chaves em outra ordem bloqueia", async () => {
+  const f = fakeDb();
+  const base = { product: { id: "prod-alpha" }, customer: { email: EMAIL } };
+  const paid = await handleCheckoutWebhook(req({ order_id: "ord-9", status: "paid", transaction: { id: "txn-9" }, ...base }), env(), f.db);
+  assert.equal(paid.body.action, "invited");
+  const refund = await handleCheckoutWebhook(req({ status: "refunded", transaction: { id: "txn-9" }, order_id: "ord-9", ...base }), env(), f.db);
+  assert.equal(refund.body.action, "blocked");
+  assert.equal(f.tables.members[0].access_status, "blocked");
+  assert.deepEqual(f.tables.checkout_events.map((e) => e.id).sort(), ["txn-9:approved", "txn-9:revoked"]);
+});
+
+test("e-mail do comprador sem prefixo (topo) ao lado do e-mail do produtor: libera para o comprador", async () => {
+  const f = fakeDb();
+  const r = await handleCheckoutWebhook(req(payload({ customer: { name: "Ana Souza" }, email: EMAIL, producer: { email: "produtor@alpha.test" } })), env(), f.db);
+  assert.equal(r.body.action, "invited");
+  assert.deepEqual(f.invites.map((i) => i.email), ["comprador@exemplo.com"]);
+});
+
+test("dois ids de transação diferentes no mesmo nível: 422, nada muda", async () => {
+  const f = fakeDb();
+  const r = await handleCheckoutWebhook(req(payload({ transaction_id: "txn-x" })), env(), f.db);
+  assert.deepEqual([r.status, r.body.error], [422, "sem transação"]);
+  assert.equal(f.invites.length, 0);
+});
+
+// ---------- estorno ↔ compra pela transação (29/10, 3ª rodada) ----------
+// O estorno acha a conta pelo registro do `paid` da MESMA transação (conta gravada na hora da liberação),
+// nunca pelo e-mail que vem no evento de estorno.
+
+const OUTRO = "outro@exemplo.com";
+
+test("estorno com e-mail diferente do da compra: bloqueia a conta que recebeu o acesso", async () => {
+  const f = fakeDb();
+  await handleCheckoutWebhook(req(payload()), env(), f.db);
+  const r = await handleCheckoutWebhook(req(payload({ status: "refunded", customer: { email: OUTRO } })), env(), f.db);
+  assert.deepEqual([r.status, r.body.action], [200, "blocked"]);
+  assert.equal(f.tables.members[0].access_status, "blocked");
+  // Reenvio do estorno: duplicado, segue bloqueado; o paid atrasado da mesma transação não reativa.
+  assert.equal((await handleCheckoutWebhook(req(payload({ status: "refunded", customer: { email: OUTRO } })), env(), f.db)).body.action, "duplicate");
+  assert.equal((await handleCheckoutWebhook(req(payload()), env(), f.db)).body.reason, "já reembolsada");
+  assert.equal(f.tables.members[0].access_status, "blocked");
+  noPii();
+});
+
+test("estorno sem e-mail ou com e-mail ambíguo: decide pela transação", async () => {
+  const semEmail = payload({ status: "chargedback", customer: { name: "Ana Souza" } });
+  const ambiguo = payload({ status: "chargedback", customer: { name: "Ana Souza" }, email: "a@x.test", user: { email: "b@x.test" } });
+  for (const body of [semEmail, ambiguo]) {
+    const f = fakeDb();
+    await handleCheckoutWebhook(req(payload()), env(), f.db);
+    const r = await handleCheckoutWebhook(req(body), env(), f.db);
+    assert.deepEqual([r.status, r.body.action], [200, "blocked"]);
+    assert.equal(f.tables.members[0].access_status, "blocked");
+  }
+});
+
+test("duas compras e o estorno de uma chega com outro e-mail: acesso continua (kept)", async () => {
+  const f = fakeDb();
+  await handleCheckoutWebhook(req(payload()), env(), f.db);
+  await handleCheckoutWebhook(req(payload({ transaction: { id: "txn-2" } })), env(), f.db);
+  const r = await handleCheckoutWebhook(req(payload({ status: "refunded", customer: { email: OUTRO } })), env(), f.db);
+  assert.equal(r.body.action, "kept");
+  assert.equal(f.tables.members[0].access_status, "active");
+});
+
+test("mesma conta com duas compras em e-mails diferentes (e-mail de login trocado): estorno de uma não tira o acesso da outra", async () => {
+  const f = fakeDb();
+  await handleCheckoutWebhook(req(payload()), env(), f.db);
+  // A conta trocou o e-mail de login; a segunda compra veio com o e-mail novo e caiu na mesma conta.
+  f.users.set("novo@exemplo.com", f.users.get("comprador@exemplo.com")!);
+  const dois = { transaction: { id: "txn-2" }, customer: { email: "novo@exemplo.com" } };
+  assert.equal((await handleCheckoutWebhook(req(payload(dois)), env(), f.db)).body.action, "reactivated");
+  assert.equal(f.tables.members.length, 1);
+  const a = await handleCheckoutWebhook(req(payload({ ...dois, status: "refunded" })), env(), f.db);
+  assert.equal(a.body.action, "kept");
+  assert.equal(f.tables.members[0].access_status, "active");
+  const b = await handleCheckoutWebhook(req(payload({ status: "refunded" })), env(), f.db);
+  assert.equal(b.body.action, "blocked");
+  assert.equal(f.tables.members[0].access_status, "blocked");
+});
+
+test("estorno de transação sem compra registrada: não bloqueia ninguém e barra o paid atrasado", async () => {
+  const f = fakeDb();
+  // Acesso que não veio desta transação (ex.: liberado à mão) com o mesmo e-mail do evento.
+  f.tables.members.push({ id: "user-manual", email: "comprador@exemplo.com", access_status: "active" });
+  const r = await handleCheckoutWebhook(req(payload({ status: "refunded", transaction: { id: "txn-desconhecida" } })), env(), f.db);
+  assert.deepEqual([r.status, r.body.action, r.body.reason], [200, "ignored", "sem compra"]);
+  assert.equal(f.tables.members[0].access_status, "active");
+  assert.deepEqual(f.tables.checkout_events.map((e) => e.id), ["txn-desconhecida:revoked"]);
+  const late = await handleCheckoutWebhook(req(payload({ transaction: { id: "txn-desconhecida" } })), env(), f.db);
+  assert.equal(late.body.reason, "já reembolsada");
+  assert.equal(f.invites.length, 0);
+  noPii();
+});
+
+test("a liberação grava a conta na transação aprovada", async () => {
+  const f = fakeDb();
+  await handleCheckoutWebhook(req(payload()), env(), f.db);
+  const ev = f.tables.checkout_events.find((e) => e.id === "txn-1:approved")!;
+  assert.equal(ev.user_id, f.tables.members[0].id);
+});
+
+test("falha ao gravar a conta na transação: 500, marca desfeita, sem acesso", async () => {
+  const f = fakeDb({ failUpdate: "checkout_events" });
+  const r = await handleCheckoutWebhook(req(payload()), env(), f.db);
+  assert.equal(r.status, 500);
+  assert.equal(f.tables.checkout_events.length, 0);
+  assert.equal(f.tables.members.length, 0);
+});
+
+test("estorno processado no meio da liberação (antes do vínculo com a conta): o paid confere no fim e bloqueia", async () => {
+  const f = fakeDb();
+  const admin = f.db.auth.admin as unknown as { inviteUserByEmail: (...a: unknown[]) => Promise<unknown> };
+  const invite = admin.inviteUserByEmail.bind(admin);
+  let refund: { status: number; body: Record<string, unknown> } | undefined;
+  admin.inviteUserByEmail = async (...a) => {
+    const out = await invite(...a);
+    refund = await handleCheckoutWebhook(req(payload({ status: "refunded" })), env(), f.db);
+    return out;
+  };
+  const r = await handleCheckoutWebhook(req(payload()), env(), f.db);
+  assert.equal(refund?.body.reason, "sem compra"); // a conta ainda não estava ligada à transação
+  assert.equal(r.body.reason, "já reembolsada");
+  assert.equal(f.tables.members[0].access_status, "blocked");
+});
+
+test("paid termina inteiro enquanto o estorno grava a marca: o estorno ainda acha a conta e bloqueia", async () => {
+  const f = fakeDb();
+  let paid: { body: Record<string, unknown> } | undefined;
+  f.opts.beforeInsert = async (t, row) => {
+    if (t !== "checkout_events" || row.id !== "txn-1:revoked" || paid) return;
+    paid = await handleCheckoutWebhook(req(payload()), env(), f.db);
+  };
+  const r = await handleCheckoutWebhook(req(payload({ status: "refunded" })), env(), f.db);
+  assert.equal(paid?.body.action, "invited");
+  assert.equal(r.body.action, "blocked");
+  assert.equal(f.tables.members[0].access_status, "blocked");
+});
+
+test("paid e estorno da mesma transação ao mesmo tempo: em qualquer ordem, termina sem acesso", async () => {
+  for (const order of [0, 1]) {
+    const f = fakeDb();
+    const calls = [() => handleCheckoutWebhook(req(payload()), env(), f.db), () => handleCheckoutWebhook(req(payload({ status: "refunded" })), env(), f.db)];
+    if (order) calls.reverse();
+    await Promise.all(calls.map((c) => c()));
+    assert.ok(!f.tables.members.some((m) => m.access_status === "active"), `ordem ${order}: acesso ficou ativo`);
+  }
+});
+
+// ---------- link do checkout ----------
+
+test("link do checkout: mantém parâmetros do link, soma UTMs e sck, não leva dado pessoal com o prefill desligado", () => {
+  Object.assign(globalThis, { window: { location: { origin: "https://alpha.test" } } });
+  // [PLANO B] Resto deste teste e o teste de leadRow reescritos em 17/11/2026 (o final do arquivo original se perdeu).
+  const extra = { sck: "servico-012" };
+  for (const [k, v] of [
+    ["name", CHECKOUT_PREFILL.name],
+    ["email", CHECKOUT_PREFILL.email],
+    ["phone", CHECKOUT_PREFILL.phone],
+  ] as const) {
+    assert.equal(v, "", `prefill de ${k} deveria estar desligado até a Disrupty confirmar o nome do parâmetro`);
+  }
+  const url = new URL(buildCheckoutUrl("https://pay.exemplo.test/c/alpha?coupon=X", { utm_source: "instagram", utm_campaign: "build" }, extra));
+  assert.equal(url.searchParams.get("coupon"), "X");
+  assert.equal(url.searchParams.get("utm_source"), "instagram");
+  assert.equal(url.searchParams.get("utm_campaign"), "build");
+  assert.equal(url.searchParams.get("sck"), "servico-012");
+  assert.ok(!/comprador|ana|5511|@/i.test(url.search), "nenhum dado pessoal no link");
+});
+
+test("leadRow: grava `rota` (coluna real), não `perfil`; e-mail em minúsculas", () => {
+  const row = leadRow({ nome: "Ana", whatsapp: "5511988887777", email: "Ana@Exemplo.COM", perfil: "servico", r: "012", consentimento: true });
+  assert.equal(row.rota, "servico");
+  assert.equal(row.email, "ana@exemplo.com");
+  assert.ok(!("perfil" in row));
+  assert.deepEqual(Object.keys(row).sort(), ["consentimento", "email", "nome", "r", "rota", "utm", "whatsapp"]);
+  const semEmail = leadRow({ nome: "Bia", whatsapp: "5511977776666", consentimento: true });
+  assert.equal(semEmail.email, null);
+  assert.equal(semEmail.rota, null);
+});

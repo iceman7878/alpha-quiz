@@ -400,6 +400,58 @@
   letter-spacing: var(--tr-label);
   text-transform: uppercase;
 }
+/* Detalhe do core montado: recorte das arestas das 7 camadas e da coluna de rótulos do pôster.
+   Sem moldura de card: uma linha fina em cima e o recorte dissolvendo no campo pelas bordas.
+   Posição do recorte em unidades da própria caixa (cqw), para o enquadramento não depender da tela. */
+.v2-sys__detail {
+  position: relative;
+  container-type: inline-size;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  max-width: 400px; /* acima disso o pôster passaria de ~1,1× e perderia nitidez */
+  overflow: hidden;
+  border-top: var(--bw) solid var(--line);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 30%, #000 84%, transparent), linear-gradient(180deg, #000 60%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(90deg, transparent, #000 30%, #000 84%, transparent), linear-gradient(180deg, #000 60%, transparent);
+  mask-composite: intersect;
+}
+.v2-sys__detail img {
+  position: absolute;
+  width: var(--crop-w, 320cqw);
+  max-width: none;
+  aspect-ratio: 1; /* altura antes de carregar: sem ela o lazy-load não enxerga a imagem */
+  left: var(--crop-x, -158cqw);
+  top: var(--crop-top, -144cqw);
+}
+@media (min-width: 900px) {
+  .v2-sys {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr);
+    column-gap: var(--s-9);
+  }
+  .v2-sys > :first-child {
+    grid-column: 1 / -1;
+  }
+  .v2-sys__body {
+    grid-row: 2;
+    grid-column: 1;
+    align-self: start;
+  }
+  /* peso diagonal: título em cima à esquerda, detalhe embaixo à direita, descendo além do texto */
+  .v2-sys__detail {
+    grid-row: 2;
+    grid-column: 2;
+    aspect-ratio: 4 / 5;
+    width: 100%;
+    max-width: 440px;
+    justify-self: end;
+    margin-top: var(--s-9);
+    /* escala menor que no mobile: a caixa é maior e o pôster não passa de ~1,1× */
+    --crop-w: 280cqw;
+    --crop-x: -132cqw;
+    --crop-top: -94cqw;
+  }
+}
 
 /* 05 — mecanismo em eixo */
 .v2-steps {
@@ -581,16 +633,18 @@
   position: relative;
   isolation: isolate;
   max-width: 520px;
-  margin-right: var(--s-3);
+  margin-right: var(--s-4);
+  margin-bottom: var(--s-4);
 }
 /* profundidade: uma segunda lâmina por trás, deslocada — a mesma lógica de camadas do core */
 .v2-demo__plate::before {
   content: "";
   position: absolute;
-  inset: var(--s-3) calc(var(--s-3) * -1) calc(var(--s-3) * -1) var(--s-3);
+  inset: var(--s-4) calc(var(--s-4) * -1) calc(var(--s-4) * -1) var(--s-4);
   z-index: -1;
-  border: var(--bw) solid var(--line-soft);
-  background: var(--surface-2);
+  border: var(--bw) solid var(--line);
+  /* a lâmina de trás recebe a luz por cima e escurece para baixo: lê como chapa, não como contorno */
+  background: linear-gradient(175deg, rgba(62, 68, 79, 0.22), rgba(8, 8, 10, 0.5) 70%), var(--campo-top);
 }
 /* aresta superior com um brilho metálico contido */
 .v2-demo__plate::after {
@@ -605,6 +659,8 @@
 }
 .v2-demo__plate .demo {
   background: linear-gradient(170deg, rgba(62, 68, 79, 0.16), rgba(8, 8, 10, 0.6)), var(--campo-bottom);
+  /* chanfro: luz rasante na aresta esquerda, a mesma direção do brilho da aresta de cima */
+  box-shadow: inset 1px 0 0 rgba(233, 228, 219, 0.09);
 }
 .v2-demo__notes {
   display: grid;
