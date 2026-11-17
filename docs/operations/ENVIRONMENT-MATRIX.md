@@ -23,7 +23,7 @@ Nunca registrar valores aqui. Fonte: leitura do código (agente Infra), sem `ver
 | Sistema | Estado observado (17/11) | Dono |
 |---|---|---|
 | Supabase | só `anunzy` e `anunzy-dev` (não tocados); **não existe projeto da ALPHA** | Infra |
-| Vercel | conector: `list_teams` vazio; `list_projects` → 403 no escopo `white-96ac` | Release |
+| Vercel | conector: `list_teams` vazio; `list_projects` → 403 no escopo `<VERCEL_TEAM_SLUG>` | Release |
 | Disrupty | documentação oficial acessível em `disruptybr.app`; sem produto/ID/webhook confirmados | Payment |
 | Meta Pixel | código pronto; sem ID | Tracking |
 | ManyChat | nenhum fluxo verificado | Tracking / Victor |
