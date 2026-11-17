@@ -111,6 +111,14 @@ create table if not exists public.checkout_events (
   user_id    uuid                       -- no "approved": conta que esta transação liberou (o estorno bloqueia esta)
 );
 alter table public.checkout_events add column if not exists user_id uuid;
+-- Posse da marca (F05): cada entrega grava o seu token; a retomada troca o dono num UPDATE condicional;
+-- finalized_at = acesso liberado por esta transação.
+alter table public.checkout_events add column if not exists claim_token text;
+alter table public.checkout_events add column if not exists claimed_at timestamptz;
+alter table public.checkout_events add column if not exists finalized_at timestamptz;
+-- Linhas da versão anterior: "approved" com conta ligada já foi concluído; sem claimed_at, conta a partir de created_at.
+update public.checkout_events set finalized_at = created_at where kind = 'approved' and user_id is not null and finalized_at is null;
+update public.checkout_events set claimed_at = created_at where claimed_at is null;
 alter table public.checkout_events enable row level security;
 revoke all on public.checkout_events from anon, authenticated;
 
@@ -126,3 +134,38 @@ left join public.progress p on p.user_id = m.id
 group by m.id;
 
 revoke all on public.crm_build from anon, authenticated;
+
+-- ---------- liberação do acesso (webhook) ----------
+-- Numa só transação: trava a marca, confere o dono (token) e que não há estorno, ativa o membro (na recompra só
+-- sobrescreve o que veio preenchido), liga a conta à transação e finaliza. Quem perdeu a posse recebe 'lost' e não
+-- produz efeito nenhum. Retorno: 'ok' | 'lost' | 'revoked'.
+create or replace function public.finalize_checkout_claim(
+  p_event_id text, p_token text, p_user_id uuid, p_email text, p_txn text,
+  p_nome text, p_whatsapp text, p_r text, p_route text
+) returns text
+language plpgsql security invoker set search_path = '' as $$
+declare v_token text;
+begin
+  select claim_token into v_token from public.checkout_events
+   where id = p_event_id and finalized_at is null
+   for update;
+  if not found or v_token is distinct from p_token then
+    return 'lost';
+  end if;
+  if exists (select 1 from public.checkout_events where id = p_txn || ':revoked') then
+    return 'revoked';
+  end if;
+  insert into public.members as m (id, email, access_status, nome, whatsapp, r, route)
+  values (p_user_id, p_email, 'active', p_nome, p_whatsapp, p_r, p_route)
+  on conflict (id) do update set
+    email = excluded.email,
+    access_status = 'active',
+    nome = coalesce(excluded.nome, m.nome),
+    whatsapp = coalesce(excluded.whatsapp, m.whatsapp),
+    r = coalesce(excluded.r, m.r),
+    route = coalesce(excluded.route, m.route);
+  update public.checkout_events set user_id = p_user_id, finalized_at = now() where id = p_event_id;
+  return 'ok';
+end $$;
+revoke all on function public.finalize_checkout_claim(text, text, uuid, text, text, text, text, text, text) from public, anon, authenticated;
+grant execute on function public.finalize_checkout_claim(text, text, uuid, text, text, text, text, text, text) to service_role;

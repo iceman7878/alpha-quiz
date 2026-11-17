@@ -16,6 +16,13 @@ export const mode: Mode = URL && ANON ? "supabase" : DEMO_ALLOWED ? "demo" : "mi
 export const isDemo = () => mode === "demo";
 
 let client: SupabaseClient | null = null;
+/** Erro de leitura (rede, banco, servidor). Nunca confundir com "não tem compra" ou "não tem progresso". */
+export class LoadError extends Error {}
+/** Só para testes: injeta um cliente falso (com o módulo importado em modo "supabase") e limpa o cache. */
+export function __useClientForTests(c: SupabaseClient | null) {
+  client = c;
+  contentCache = null;
+}
 function sb(): SupabaseClient | null {
   if (mode !== "supabase") return null;
   if (!client) client = createClient(URL, ANON);
@@ -124,7 +131,9 @@ export async function loadContent(): Promise<BuildContent | null> {
     headers.authorization = `Bearer ${data.session.access_token}`;
   }
   const res = await fetch("/api/build/content", { headers, cache: "no-store" });
-  if (!res.ok) return null;
+  // 401/403 = sem sessão válida ou sem acesso ativo; qualquer outro erro (500, 503…) é falha, não "sem compra".
+  if (res.status === 401 || res.status === 403) return null;
+  if (!res.ok) throw new LoadError(`conteúdo ${res.status}`);
   contentCache = (await res.json()) as BuildContent;
   return contentCache;
 }
@@ -139,13 +148,19 @@ export async function loadMember(): Promise<Member | null> {
     const d = demoRead();
     return { email: "demo@alpha", nome: local.nome, route: local.route ?? "servico", active: true, score: d.score, level: d.level, scoreAnswers: d.scoreAnswers ?? null };
   }
-  const { data: u } = await c.auth.getUser();
-  if (!u.user) return null;
-  const { data } = await c
+  const { data: u, error: authError } = await c.auth.getUser();
+  if (!u.user) {
+    // Sessão inválida/expirada (4xx) = sem acesso; rede ou servidor (sem status ou 5xx) = falha.
+    const st = (authError as { status?: number } | null)?.status;
+    if (authError && (!st || st >= 500)) throw new LoadError("auth");
+    return null;
+  }
+  const { data, error } = await c
     .from("members")
     .select("email, nome, route, access_status, score, level, score_answers")
     .eq("id", u.user.id)
     .maybeSingle();
+  if (error) throw new LoadError("members");
   if (!data) return null;
   return {
     email: data.email,
@@ -161,10 +176,37 @@ export async function loadMember(): Promise<Member | null> {
 export async function loadProgress(): Promise<Progress> {
   const c = sb();
   if (!c) return demoRead().progress;
-  const { data } = await c.from("progress").select("day, answers, completed");
+  // Erro de leitura NÃO vira progresso vazio: a tela do dia salvaria por cima das respostas reais.
+  const { data, error } = await c.from("progress").select("day, answers, completed");
+  if (error) throw new LoadError("progress");
   const out: Progress = {};
   for (const row of data ?? []) out[row.day] = { answers: row.answers ?? {}, completed: !!row.completed };
   return out;
+}
+
+// ---------- guarda da área ----------
+
+export type AreaLoad =
+  | { status: "misconfigured" }
+  | { status: "nosession" }
+  | { status: "noaccess" }
+  | { status: "error" }
+  | { status: "ready"; member: Member; progress: Progress; content: BuildContent };
+
+/** O que a área de membros deve mostrar. Falha de leitura vira "error" (tentar de novo), nunca "sem compra" nem progresso vazio. */
+export async function loadArea(): Promise<AreaLoad> {
+  if (mode === "misconfigured") return { status: "misconfigured" };
+  try {
+    if (!(await currentEmail())) return { status: "nosession" };
+    const member = await loadMember();
+    if (!member || !member.active) return { status: "noaccess" };
+    const [progress, content] = await Promise.all([loadProgress(), loadContent()]);
+    if (!content) return { status: "noaccess" };
+    return { status: "ready", member, progress, content };
+  } catch (e) {
+    console.error("[area] falha ao carregar:", e instanceof Error ? e.message : "erro");
+    return { status: "error" };
+  }
 }
 
 export async function saveDay(day: number, answers: Answers, completed: boolean): Promise<string | null> {

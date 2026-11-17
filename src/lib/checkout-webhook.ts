@@ -11,13 +11,13 @@
 //   Com os dois definidos, a assinatura passa a ser exigida. Só um dos dois = configuração inválida (503).
 //
 // Cada (transação, tipo) é processado uma vez (tabela checkout_events). No `paid`, falha no meio desfaz a marca
-// e responde 500, para o reenvio da Disrupty (até 5x) tentar de novo. Reenvio que encontra a marca sem o
+// e responde 500, para o reenvio da Disrupty (até 3x: 5, 15 e 30 min) tentar de novo. Reenvio que encontra a marca sem o
 // efeito pronto (outra entrega ainda processando ou falhou) recebe 409, para tentar de novo.
 // O `paid` grava na sua marca a conta liberada (user_id); o estorno bloqueia ESSA conta, achada pela transação.
 // Estorno de transação sem compra registrada não bloqueia ninguém (só barra um `paid` atrasado).
 // Lógica separada da rota para ser testada sem Next nem Supabase (tests/checkout-webhook.test.ts).
 
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { kindOf, normalize, payloadKeys } from "./checkout";
 import { decodeAnswers, scoreAnswers } from "./quiz";
@@ -106,10 +106,30 @@ async function revokeTxn(db: SupabaseClient, txn: string): Promise<"blocked" | "
   return blocked.error ? null : "blocked";
 }
 
-/** Acesso da compra já ativo? (para responder 200 a um reenvio do `paid` com segurança) */
-async function memberActive(db: SupabaseClient, email: string): Promise<boolean> {
-  const { data, error } = await db.from("members").select("access_status").eq("email", email).maybeSingle();
-  return !error && (data as { access_status?: string } | null)?.access_status === "active";
+/** Prazo de uma entrega viva. A rota declara maxDuration = 30 s; a Disrupty reenvia em 5, 15 e 30 min. */
+const LEASE_MS = 2 * 60_000;
+
+/**
+ * Retoma uma marca abandonada trocando o dono num único UPDATE condicional (não finalizada e mais velha que o prazo).
+ * O Postgres trava a linha: de duas execuções, só uma recebe a linha de volta. A execução antiga perde a posse e
+ * nada que ela faça depois tem efeito (ver finalize_checkout_claim e o delete por token em fail()).
+ */
+async function reclaimStale(db: SupabaseClient, eventId: string, token: string): Promise<boolean> {
+  const cutoff = new Date(Date.now() - LEASE_MS).toISOString();
+  const { data, error } = await db
+    .from("checkout_events")
+    .update({ claim_token: token, claimed_at: new Date().toISOString() })
+    .eq("id", eventId)
+    .is("finalized_at", null)
+    .lt("claimed_at", cutoff)
+    .select("id");
+  return !error && Array.isArray(data) && data.length === 1;
+}
+
+/** Este evento já foi concluído (acesso liberado por alguma execução)? */
+async function eventFinalized(db: SupabaseClient, eventId: string): Promise<boolean> {
+  const { data, error } = await db.from("checkout_events").select("finalized_at").eq("id", eventId).maybeSingle();
+  return !error && !!(data as { finalized_at?: string | null } | null)?.finalized_at;
 }
 
 export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: SupabaseClient | null): Promise<WebhookResult> {
@@ -197,36 +217,47 @@ export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: S
 
   // Idempotência: a Disrupty reenvia o mesmo evento. Marca existente só vira 200 se o acesso já estiver ativo;
   // senão outra entrega ainda está processando (ou falhou sem desfazer a marca) e o reenvio precisa continuar.
-  const claim = await db.from("checkout_events").insert({ id: eventId, txn, kind, status, email });
+  // Posse da marca: cada execução tem o seu token. Marca antiga sem efeito = entrega abandonada (função interrompida,
+  // delete falho): o reenvio retoma trocando o dono atomicamente, em vez de 409 eterno.
+  const token = randomUUID();
+  const claim = await db.from("checkout_events").insert({ id: eventId, txn, kind, status, email, claim_token: token, claimed_at: new Date().toISOString() });
   if (claim.error) {
-    if (claim.error.code === "23505") {
-      if (await memberActive(db, email)) return res(200, { ok: true, action: "duplicate" });
+    if (claim.error.code !== "23505") {
+      console.error("[checkout] checkout_events:", claim.error.message);
+      return res(500, { ok: false, error: "db" });
+    }
+    if (await eventFinalized(db, eventId)) return res(200, { ok: true, action: "duplicate" });
+    if (!(await reclaimStale(db, eventId, token))) {
       console.warn("[checkout] marca sem efeito ainda; pedindo reenvio", { txn, kind });
       return res(409, { ok: false, error: "em processamento" });
     }
-    console.error("[checkout] checkout_events:", claim.error.message);
-    return res(500, { ok: false, error: "db" });
+    console.warn("[checkout] marca abandonada retomada", { txn, kind });
   }
+  // Só desfaz a PRÓPRIA marca: se outra execução retomou, o token não bate e nada é apagado.
   const fail = async (error: string, detail?: string) => {
     console.error("[checkout] falha", { error, detail, txn, kind });
-    await db.from("checkout_events").delete().eq("id", eventId);
+    const undo = await db.from("checkout_events").delete().eq("id", eventId).eq("claim_token", token);
+    if (undo.error) console.error("[checkout] marca não desfeita; o reenvio retoma após o prazo", { txn, kind });
     return res(500, { ok: false, error });
   };
 
-  // 1) Usuário do Auth: convite (e-mail com link para /definir-senha) para quem é novo; id existente para quem já tem conta.
+  // 1) Usuário do Auth: conta existente primeiro (uma entrega retomada não reenvia o convite); senão, convite
+  //    (e-mail com link para /definir-senha). Convite não dá acesso: o acesso só sai em finalize_checkout_claim.
   const site = env.siteUrl || new URL(req.url).origin;
-  const invite = await db.auth.admin.inviteUserByEmail(email, { redirectTo: `${site}/definir-senha`, data: { nome } });
-  let userId = invite.data?.user?.id ?? null;
-  const already = !!invite.error && /already|registered|exists/i.test(invite.error.message);
-  if (invite.error && !already) return fail("invite", invite.error.message);
+  const found = await db.rpc("user_id_by_email", { p_email: email });
+  let userId = (found.data as string | null) ?? null;
+  let already = !!userId;
   if (!userId) {
-    const { data } = await db.rpc("user_id_by_email", { p_email: email });
-    userId = (data as string | null) ?? null;
+    const invite = await db.auth.admin.inviteUserByEmail(email, { redirectTo: `${site}/definir-senha`, data: { nome } });
+    userId = invite.data?.user?.id ?? null;
+    already = !!invite.error && /already|registered|exists/i.test(invite.error.message);
+    if (invite.error && !already) return fail("invite", invite.error.message);
+    if (!userId) {
+      const { data } = await db.rpc("user_id_by_email", { p_email: email });
+      userId = (data as string | null) ?? null;
+    }
   }
   if (!userId) return fail("user");
-  // Liga a transação à conta ANTES de liberar: é por esse vínculo que o estorno acha quem bloquear.
-  const link = await db.from("checkout_events").update({ user_id: userId }).eq("id", eventId);
-  if (link.error) return fail("db", link.error.message);
 
   // 2) Rota: primeiro pelo sck do checkout; senão, pelo lead do quiz (e-mail ou WhatsApp).
   let r = sck.split("-")[1] || "";
@@ -240,16 +271,28 @@ export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: S
   }
   const answers = decodeAnswers(r);
 
-  // 3) Membro ativo. Na recompra, só sobrescreve o que veio preenchido.
-  const row: Record<string, unknown> = { id: userId, email, access_status: "active" };
-  if (nome) row.nome = nome;
-  if (whatsapp) row.whatsapp = whatsapp;
-  if (answers) {
-    row.r = r;
-    row.route = scoreAnswers(answers);
+  // 3) Libera e finaliza numa só transação no Postgres (finalize_checkout_claim, supabase/schema.sql): trava a marca,
+  //    confere que o token ainda é o desta execução e que não há estorno, ativa o membro (na recompra só sobrescreve o
+  //    que veio preenchido), liga a conta à transação e marca finalized_at. Quem perdeu a posse recebe "lost" e não
+  //    produz efeito nenhum.
+  const fin = await db.rpc("finalize_checkout_claim", {
+    p_event_id: eventId,
+    p_token: token,
+    p_user_id: userId,
+    p_email: email,
+    p_txn: txn,
+    p_nome: nome || null,
+    p_whatsapp: whatsapp || null,
+    p_r: answers ? r : null,
+    p_route: answers ? scoreAnswers(answers) : null,
+  });
+  if (fin.error) return fail("db", fin.error.message);
+  if (fin.data === "lost") {
+    console.warn("[checkout] posse perdida para outra entrega; sem efeito", { txn, kind });
+    return res(409, { ok: false, error: "em processamento" });
   }
-  const { error } = await db.from("members").upsert(row, { onConflict: "id" });
-  if (error) return fail("db", error.message);
+  if (fin.data === "revoked") return res(200, { ok: true, action: "ignored", reason: "já reembolsada" });
+  if (fin.data !== "ok") return fail("db", "finalize sem resposta");
 
   // Estorno que chegou enquanto esta entrega processava: desfaz. Erro aqui → 500 sem apagar a marca; o reenvio
   // cai na trava do estorno (que bloqueia) ou no duplicado.

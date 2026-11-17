@@ -16,14 +16,14 @@ npm run build    # build de produção
 
 | Variável | O que é |
 |---|---|
-| `NEXT_PUBLIC_CHECKOUT_URL` | Link do checkout. Único lugar a trocar quando a plataforma for definida. |
+| `NEXT_PUBLIC_CHECKOUT_URL` | Link do checkout da Disrupty. Único lugar onde o link existe. |
 | `NEXT_PUBLIC_META_PIXEL_ID` | ID do Meta Pixel. Vazio = pixel desligado. |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Projeto Supabase (Settings → API). Sem elas, `/build` roda em modo demonstração só em `npm run dev`; em qualquer build de produção (inclusive Preview da Vercel) fica fechado. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Chave service role — só servidor. Grava leads e cria membros. |
-| `CHECKOUT_WEBHOOK_SECRET`, `CHECKOUT_SIGNATURE_SECRET`, `CHECKOUT_SIGNATURE_HEADER`, `CHECKOUT_SIGNATURE_ALGO`, `CHECKOUT_PRODUCT_IDS` | Webhook do checkout: token, assinatura oficial do provider e produtos aceitos. Sem todas, o webhook responde 503 e não libera ninguém. |
+| `CHECKOUT_WEBHOOK_SECRET`, `CHECKOUT_SIGNATURE_SECRET`, `CHECKOUT_SIGNATURE_HEADER`, `CHECKOUT_SIGNATURE_ALGO`, `CHECKOUT_PRODUCT_IDS` | Webhook do checkout: token, assinatura oficial do provider e produtos aceitos. Obrigatórias: `CHECKOUT_WEBHOOK_SECRET` (mín. 32 caracteres) e `CHECKOUT_PRODUCT_IDS`; sem elas o webhook responde 503. Assinatura opcional (segredo e header juntos, ou 503). |
 | `NEXT_PUBLIC_SITE_URL` | Domínio final, usado no link do convite. |
 | `NEXT_PUBLIC_MENTORSHIP_URL` | Link da aplicação para a mentoria. |
-| `LEAD_WEBHOOK_URL` | (Opcional) Cópia do lead para outro destino (Make, Zapier, ManyChat…). |
+| `LEAD_WEBHOOK_URL` | (Opcional) Cópia do lead para outro destino (Make, Zapier, ManyChat…). Em produção sem Supabase e sem esta variável, o lead responde 503. |
 
 Modelo em [.env.example](.env.example). Fallback do checkout em `src/config.ts`.
 
@@ -92,7 +92,7 @@ Visão `crm_build`: quem comprou → dias concluídos → nível (só pelo paine
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role key (secreta) |
 | `CHECKOUT_WEBHOOK_SECRET` | um texto aleatório longo |
-| `CHECKOUT_SIGNATURE_SECRET` / `_HEADER` / `_ALGO` | segredo de assinatura do provider, header onde ela chega, `sha256` ou `sha1` |
+| `CHECKOUT_SIGNATURE_SECRET` / `_HEADER` / `_ALGO` | **opcional**: só quando a Disrupty documentar o segredo do `X-Signature`; segredo e header juntos (um só = 503), `sha256` ou `sha1` |
 | `CHECKOUT_PRODUCT_IDS` | id(s) do produto ALPHA LAUNCH no checkout |
 | `NEXT_PUBLIC_SITE_URL` | `https://<dominio>` |
 | `NEXT_PUBLIC_CHECKOUT_URL` | link do checkout |
@@ -113,9 +113,9 @@ Cadastrar o webhook na plataforma: `https://<dominio>/api/checkout?token=<CHECKO
 | Recompra de quem já tem conta | `access_status = active` (sem novo convite; entra ou recupera a senha) |
 | Reembolso / chargeback (`refunded`, `chargedback`) | `access_status = blocked` na conta que **essa transação** liberou (achada pela transação, não pelo e-mail do estorno); continua ativo se a conta tiver outra compra paga e não reembolsada; nada é apagado |
 
-Só libera acesso com: token (mín. 32 caracteres) + assinatura HMAC, se configurada + produto em `CHECKOUT_PRODUCT_IDS` + status `paid` + id de transação + e-mail do comprador. Cada transação/tipo é processado uma vez (tabela `checkout_events`, que também guarda a conta liberada por transação — rodar o `schema.sql` atualizado). Regras e testes: `src/lib/checkout-webhook.ts`, `tests/checkout-webhook.test.ts`.
+Só libera acesso com: token (mín. 32 caracteres) + assinatura HMAC, se configurada + produto em `CHECKOUT_PRODUCT_IDS` + status `PAGO` (ou `paid`) + id da venda + e-mail do comprador; `ESTORNADO`/`refunded`/`chargedback` bloqueiam. Cada transação/tipo é processado uma vez (tabela `checkout_events`, que também guarda a conta liberada por transação — rodar o `schema.sql` atualizado). Regras e testes: `src/lib/checkout-webhook.ts`, `tests/checkout-webhook.test.ts`.
 
-Plataforma: Disrupty. Os nomes dos campos e a assinatura ainda não foram confirmados na documentação oficial; o webhook reconhece os formatos mais comuns. **Não é produção até ser validado com eventos de teste reais** — inclusive se o estorno traz o mesmo id de transação do `paid`. O evento `Purchase` do Pixel entra junto com o checkout real.
+Plataforma: Disrupty. Campos e status seguem a documentação oficial (`docs/operations/DISRUPTY-INTEGRATION-REPORT.md`); o segredo da assinatura `X-Signature` ainda não está documentado. **Não é produção até ser validado com eventos de teste reais** — inclusive se o estorno traz o mesmo id de transação do `paid`. O evento `Purchase` vem do Pixel configurado na própria Disrupty; o site nunca dispara Purchase.
 
 ### 4. Teste de ponta a ponta (depois de configurar)
 

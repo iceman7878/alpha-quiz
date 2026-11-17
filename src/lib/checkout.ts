@@ -1,11 +1,12 @@
 // Normalização do payload do webhook do checkout (Disrupty).
 //
-// Contrato confirmado da Disrupty (ajuda.disrupty.com.br/docs/documentacao-dos-webhooks-disrupty):
-// POST, reenvio até 5 vezes sem resposta 2xx, valores em centavos e estes status de pagamento:
-//   paid · authorized · processing · waiting_payment · refused · refunded · chargedback
-// AINDA NÃO confirmado (a página não abriu daqui): os nomes exatos dos campos do JSON e se há
-// assinatura. Por isso os campos são achados por padrão de nome, e o primeiro evento de teste real
-// precisa ser conferido nos logs (`[checkout]`) antes de vender.
+// Contrato oficial (app.disruptybr.app/docs/webhook, Gateway v6.7.0; ver docs/operations/DISRUPTY-INTEGRATION-REPORT.md):
+// POST com `id` (ID único da venda, usado para idempotência), `productId`, `status`, `amount` (centavos),
+// `customerEmail`, `customerName`, `customerPhone`, `saleItems[]`; até 3 reenvios (5, 15 e 30 min); resposta em até 5 s.
+// Status oficiais: PAGO · PENDENTE · EM_PROCESSAMENTO · RECUSADO · CANCELADO · ESTORNADO.
+// Os valores em inglês (paid, refunded, chargedback…) vêm da documentação antiga e continuam aceitos.
+// AINDA NÃO confirmado: segredo/algoritmo do header X-Signature, status de chargeback e se CANCELADO pode
+// chegar depois de PAGO. Os campos continuam achados por padrão de nome; conferir o 1º evento de teste nos logs (`[checkout]`).
 // Hipótese de que o bloqueio depende: o evento de estorno traz o MESMO id de transação do `paid`.
 // Se vier outro id, o estorno não bloqueia ninguém e loga "estorno sem compra registrada" (conferir no 1º estorno de teste).
 
@@ -25,15 +26,18 @@ function pick(flat: Flat, key: RegExp, value?: RegExp): string {
   return "";
 }
 
-/** Status de pagamento da Disrupty. Só `paid` libera acesso; `authorized` ainda não é dinheiro capturado. */
+/** Status de pagamento da Disrupty (já em minúsculas). Só PAGO/paid libera acesso; `authorized` ainda não é dinheiro
+ *  capturado. CANCELADO não bloqueia: a doc não diz se chega depois de um PAGO (fica registrado no log). */
 export const DISRUPTY_STATUS = {
-  approved: ["paid"],
-  revoked: ["refunded", "chargedback"],
-  pending: ["authorized", "processing", "waiting_payment"],
-  refused: ["refused"],
+  approved: ["pago", "paid"],
+  revoked: ["estornado", "refunded", "chargedback"],
+  pending: ["pendente", "em_processamento", "authorized", "processing", "waiting_payment"],
+  refused: ["recusado", "cancelado", "refused"],
 } as const;
 
 const KNOWN = new Set<string>(Object.values(DISRUPTY_STATUS).flat());
+/** Grupo do status (approved/revoked/pending/refused). A ambiguidade compara o grupo, não o texto: PAGO e paid juntos não conflitam. */
+const groupOf = (v: string) => (Object.keys(DISRUPTY_STATUS) as (keyof typeof DISRUPTY_STATUS)[]).find((g) => (DISRUPTY_STATUS[g] as readonly string[]).includes(v));
 
 export type Kind = "approved" | "revoked" | null;
 
@@ -74,8 +78,9 @@ export function normalize(body: unknown) {
   // que ainda carrega o `paid` antigo) = ambíguo: não decide pela ordem do JSON. Sem valor conhecido: o primeiro *status (só para log).
   const statuses = Object.entries(f).filter(([k]) => /(^|\.|_)status$/.test(k));
   const known = [...new Set(statuses.map(([, v]) => v.trim().toLowerCase()).filter((v) => KNOWN.has(v)))];
-  const ambiguous = known.length > 1 ? known : [];
-  const status = known.length === 1 ? known[0] : known.length ? "" : (statuses[0]?.[1] ?? "").trim().toLowerCase();
+  const groups = new Set(known.map(groupOf));
+  const ambiguous = groups.size > 1 ? known : [];
+  const status = groups.size === 1 ? known[0] : known.length ? "" : (statuses[0]?.[1] ?? "").trim().toLowerCase();
   // sck = "<rota>-<respostas>", repassado pelo quiz no link do checkout (se a Disrupty devolver).
   const sck = pick(f, /(^|\.)(sck|src|tracking\.source|utm_content)$/, /^[a-z]+-\d+$/);
   // Id da transação (idempotência e vínculo pagamento ↔ estorno): por prioridade de nome, nunca pela ordem do JSON,

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { EVIDENCE, firstMarketTest, fmtBuilt, fmtText, renderOutput, type BuildContent, type Day } from "@/lib/build";
-import { currentEmail, isDemo, loadContent, loadMember, loadProgress, mode, signOut, type Member, type Progress } from "@/lib/store";
+import { isDemo, loadArea, signOut, type Member, type Progress } from "@/lib/store";
 import { CopyButton, Rail, Reveal } from "./ui";
 
 export { CopyButton } from "./ui";
@@ -13,6 +13,7 @@ type AreaState =
   | { status: "loading" }
   | { status: "noaccess" }
   | { status: "misconfigured" }
+  | { status: "error" }
   | { status: "ready"; member: Member; progress: Progress; content: BuildContent };
 
 /** Guarda da área de membros: sem sessão → /entrar; sem compra ativa → aviso. */
@@ -21,26 +22,12 @@ export function useArea() {
   const [state, setState] = useState<AreaState>({ status: "loading" });
 
   const reload = useCallback(async () => {
-    if (mode === "misconfigured") {
-      setState({ status: "misconfigured" });
-      return;
-    }
-    const email = await currentEmail();
-    if (!email) {
+    const next = await loadArea();
+    if (next.status === "nosession") {
       router.replace("/entrar");
       return;
     }
-    const member = await loadMember();
-    if (!member || !member.active) {
-      setState({ status: "noaccess" });
-      return;
-    }
-    const [progress, content] = await Promise.all([loadProgress(), loadContent()]);
-    if (!content) {
-      setState({ status: "noaccess" });
-      return;
-    }
-    setState({ status: "ready", member, progress, content });
+    setState(next);
   }, [router]);
 
   useEffect(() => {
@@ -124,6 +111,20 @@ export function Shell(props: {
 }
 
 export function AreaFallback({ state }: { state: AreaState }) {
+  if (state.status === "error") {
+    return (
+      <main className="area">
+        <div className="area__body area__center wrap">
+          <span className="wordmark area__mark">ALPHA</span>
+          <h1 className="h1">Não foi possível carregar.</h1>
+          <p className="lead">A conexão falhou ao abrir a sua área. Sua compra e o seu progresso continuam salvos.</p>
+          <button className="btn btn--primary" onClick={() => window.location.reload()}>
+            Tentar de novo
+          </button>
+        </div>
+      </main>
+    );
+  }
   if (state.status === "misconfigured" || state.status === "noaccess") {
     const noaccess = state.status === "noaccess";
     return (
