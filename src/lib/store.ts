@@ -97,6 +97,29 @@ export async function signOut() {
   await c.auth.signOut();
 }
 
+/** Cria a conta (antes do checkout) e já entra. null = ok; string = mensagem para a pessoa. */
+export async function createAccount(email: string, password: string, nome: string): Promise<string | null> {
+  if (!sb()) return "Área em configuração. Tente de novo em alguns minutos.";
+  let res: Response;
+  try {
+    res = await fetch("/api/conta", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password, nome }) });
+  } catch {
+    return "Sem conexão. Tente de novo.";
+  }
+  if (res.status === 409) return "Este e-mail já tem conta. Entre com a sua senha.";
+  if (res.status === 422) return "Use um e-mail válido e uma senha com pelo menos 8 caracteres.";
+  if (!res.ok) return "Não foi possível criar a conta agora. Tente de novo em instantes.";
+  return signIn(email, password);
+}
+
+/** Id da conta logada (vai no checkout como externalId), ou null. */
+export async function currentUserId(): Promise<string | null> {
+  const c = sb();
+  if (!c) return null;
+  const { data } = await c.auth.getUser();
+  return data.user?.id ?? null;
+}
+
 export async function sendReset(email: string): Promise<string | null> {
   const c = sb();
   if (!c) return null;

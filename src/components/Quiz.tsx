@@ -4,7 +4,7 @@
 // A lógica (pontuação, lead, UTM, pixel, checkout) é a mesma; as telas estão em ./funnel.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CHECKOUT_PREFILL, CHECKOUT_URL, OFFER } from "@/config";
+import { CHECKOUT_PREFILL, OFFER } from "@/config";
 import { QUESTIONS, ROUTES, decodeAnswers, encodeAnswers, scoreAnswers } from "@/lib/quiz";
 import { buildCheckoutUrl, captureUtm, track, trackCustom, type Utm } from "@/lib/tracking";
 import { Field, type FieldVariant } from "./Field";
@@ -180,7 +180,7 @@ export default function Quiz() {
             route={route}
             answers={answers}
             lead={lead}
-            checkoutHref={buildCheckoutUrl(CHECKOUT_URL, utm, {
+            checkoutHref={buildCheckoutUrl("/comprar", utm, {
               rota: route.key,
               r: encodeAnswers(answers),
               src: "quiz",

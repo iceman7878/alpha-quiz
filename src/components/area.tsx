@@ -134,9 +134,14 @@ export function AreaFallback({ state }: { state: AreaState }) {
           <h1 className="h1">{noaccess ? "Acesso não encontrado." : "Área em configuração."}</h1>
           <p className="lead">
             {noaccess
-              ? "Não encontramos uma compra ativa para este e-mail. Se você comprou com outro endereço, entre com ele — ou responda o e-mail da compra que resolvemos."
+              ? "Ainda não há uma compra confirmada nesta conta. Se você acabou de pagar, aguarde alguns minutos e atualize a página."
               : "Estamos finalizando a área de membros. Tente novamente em alguns minutos."}
           </p>
+          {noaccess && (
+            <a className="btn btn--primary" href="/comprar">
+              Comprar acesso
+            </a>
+          )}
           {noaccess && (
             <button
               className="btn btn--ghost"

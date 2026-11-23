@@ -151,7 +151,7 @@ export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: S
   }
   if (!body || typeof body !== "object") return res(400, { ok: false, error: "json" });
 
-  const { email, nome, whatsapp, status, ambiguous, sck, txn, products } = normalize(body);
+  const { email, nome, whatsapp, status, ambiguous, sck, txn, products, ref } = normalize(body);
 
   // Produto de outra oferta (ou sem produto reconhecido): não é deste funil. 200 para não haver reenvio.
   if (!products.some((p) => env.productIds.includes(p))) {
@@ -171,10 +171,10 @@ export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: S
     console.info("[checkout] ignorado (status)", { status, txn, keys: status ? undefined : payloadKeys(body) });
     return res(200, { ok: true, action: "ignored", status });
   }
-  // O estorno é ligado à compra pela transação; o e-mail só é exigido para liberar.
-  if (!txn || (kind === "approved" && !email)) {
-    console.error("[checkout] payload sem", !txn ? "transação" : "e-mail do comprador (ausente ou mais de um)", { status, keys: payloadKeys(body) });
-    return res(422, { ok: false, error: !txn ? "sem transação" : "sem e-mail" });
+  // O estorno é ligado à compra pela transação; para liberar, a compra precisa trazer a conta que iniciou o checkout.
+  if (!txn || (kind === "approved" && !ref)) {
+    console.error("[checkout] payload sem", !txn ? "transação" : "conta vinculada (externalId)", { status, keys: payloadKeys(body) });
+    return res(422, { ok: false, error: !txn ? "sem transação" : "sem conta" });
   }
 
   if (!db) return res(500, { ok: false, error: "supabase não configurado" });
@@ -241,28 +241,22 @@ export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: S
     return res(500, { ok: false, error });
   };
 
-  // 1) Usuário do Auth: conta existente primeiro (uma entrega retomada não reenvia o convite); senão, convite
-  //    (e-mail com link para /definir-senha). Convite não dá acesso: o acesso só sai em finalize_checkout_claim.
-  const site = env.siteUrl || new URL(req.url).origin;
-  const found = await db.rpc("user_id_by_email", { p_email: email });
-  let userId = (found.data as string | null) ?? null;
-  let already = !!userId;
-  if (!userId) {
-    const invite = await db.auth.admin.inviteUserByEmail(email, { redirectTo: `${site}/definir-senha`, data: { nome } });
-    userId = invite.data?.user?.id ?? null;
-    already = !!invite.error && /already|registered|exists/i.test(invite.error.message);
-    if (invite.error && !already) return fail("invite", invite.error.message);
-    if (!userId) {
-      const { data } = await db.rpc("user_id_by_email", { p_email: email });
-      userId = (data as string | null) ?? null;
-    }
+  // 1) Conta: a que iniciou o checkout (criada pelo próprio comprador em /comprar). Nada de convite nem e-mail.
+  const acct = await db.auth.admin.getUserById(ref);
+  const account = acct.data?.user ?? null;
+  if (!account) {
+    if (acct.error && !/not.?found/i.test(acct.error.message)) return fail("user", acct.error.message);
+    await db.from("checkout_events").delete().eq("id", eventId).eq("claim_token", token);
+    console.error("[checkout] conta do externalId não existe", { txn, kind });
+    return res(422, { ok: false, error: "conta não encontrada" });
   }
-  if (!userId) return fail("user");
+  const userId = account.id;
+  const accountEmail = (account.email || email || "").toLowerCase();
 
   // 2) Rota: primeiro pelo sck do checkout; senão, pelo lead do quiz (e-mail ou WhatsApp).
   let r = sck.split("-")[1] || "";
   if (!decodeAnswers(r)) {
-    const byEmail = await db.from("leads").select("r").eq("email", email).order("created_at", { ascending: false }).limit(1);
+    const byEmail = await db.from("leads").select("r").eq("email", email || accountEmail).order("created_at", { ascending: false }).limit(1);
     r = byEmail.data?.[0]?.r || "";
     if (!decodeAnswers(r) && whatsapp.length >= 8) {
       const byPhone = await db.from("leads").select("r").like("whatsapp", `%${whatsapp.slice(-8)}`).order("created_at", { ascending: false }).limit(1);
@@ -279,7 +273,7 @@ export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: S
     p_event_id: eventId,
     p_token: token,
     p_user_id: userId,
-    p_email: email,
+    p_email: accountEmail,
     p_txn: txn,
     p_nome: nome || null,
     p_whatsapp: whatsapp || null,
@@ -306,5 +300,5 @@ export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: S
     return res(200, { ok: true, action: "ignored", reason: "já reembolsada" });
   }
 
-  return res(200, { ok: true, action: already ? "reactivated" : "invited" });
+  return res(200, { ok: true, action: "activated" });
 }

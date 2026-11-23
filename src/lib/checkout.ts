@@ -61,6 +61,9 @@ const TXN_KEYS = [
   /^id$/,
 ];
 
+const REF_KEYS = /(^|\.)(externalid|external_id|externaltransactionid|external_transaction_id|externalreference|external_reference|src)$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /** Valor do comprador: prefere chaves de comprador, ignora as de vendedor. Mais de um valor distinto = ambíguo (""). */
 function buyerField(f: Flat, key: RegExp, value: RegExp, norm: (v: string) => string): string {
   const all = Object.entries(f).filter(([k, v]) => key.test(k) && !NOT_BUYER.test(k) && value.test(norm(v)));
@@ -98,7 +101,11 @@ export function normalize(body: unknown) {
     .filter(([k]) => /(product|produto|offer|oferta|sku|plan|item)s?(\.\d+)?\.?(id|code|codigo|sku|ucode|hash)$|(^|\.)(sku|product_id|offer_id|offer_code|product_hash)$/.test(k))
     .map(([, v]) => v.trim())
     .filter(Boolean);
-  return { email, nome, whatsapp, status, ambiguous, sck, txn, products };
+  // Conta que iniciou o checkout: /comprar põe o id do usuário (UUID aleatório) em `externalId` no link da Disrupty.
+  // É por ele que o acesso é liberado, nunca pelo e-mail. Dois valores diferentes = ambíguo ("").
+  const refs = [...new Set(Object.entries(f).filter(([k, v]) => REF_KEYS.test(k) && UUID.test(v.trim())).map(([, v]) => v.trim().toLowerCase()))];
+  const ref = refs.length === 1 ? refs[0] : "";
+  return { email, nome, whatsapp, status, ambiguous, sck, txn, products, ref };
 }
 
 /** Só os nomes dos campos (sem valores): para descobrir o formato real no primeiro evento sem gravar dados pessoais. */

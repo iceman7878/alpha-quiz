@@ -82,6 +82,11 @@ export default function EntrarPage() {
           {mode === "login" ? "Esqueci minha senha" : "← Voltar para entrar"}
         </button>
       )}
+      {!demo && mode === "login" && (
+        <a className="btn btn--quiet auth__switch" href="/comprar">
+          Ainda não tenho acesso
+        </a>
+      )}
     </AuthFrame>
   );
 }
