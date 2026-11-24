@@ -11,8 +11,9 @@
 - Webhook "ALPHA LAUNCH — Vendas" salvo na Disrupty (PAGO + ESTORNADO, só produto 11113) apontando para `/api/checkout?token=…`.
 - Vercel (production): `CHECKOUT_PRODUCT_IDS=11113`, `NEXT_PUBLIC_CHECKOUT_URL`, `CHECKOUT_WEBHOOK_SECRET` **novo** (o antigo foi exposto; rotacionado).
 - Testes em produção com payload no formato oficial: sem token 401 · produto errado ignorado · PAGO sem externalId 422 · PAGO com externalId ativa a conta certa · duplicado · pendente ignorado · ESTORNADO bloqueia a conta da transação (mesmo com outro e-mail) · estorno duplicado · PAGO atrasado após estorno não reativa · estorno sem compra não bloqueia ninguém. Quiz → lead → resultado → /comprar ok. `/api/build/content` sem sessão = 401.
-- **Pendente (único):** compra no link de teste oficial da Disrupty para confirmar que ela devolve o `externalId` no webhook. O checkout de teste exige CPF (preenchido pelo Victor).
-- Linhas de teste a apagar: `checkout_events` com `txn like 'TESTE-%'`; conta `alpha.teste.webhook1124@example.com`.
+- 24/11 tarde: a doc oficial do webhook (v6.7.0) NÃO traz o externalId do link (`externalTransactionId` = id da adquirente). Corrigido em `9d2f393`: `/comprar` pede CPF (HMAC em `app_metadata.doc_hash`, chave `ACCOUNT_DOC_PEPPER`) e o webhook liga a venda à conta por e-mail + CPF quando não há externalId. Validado em produção com payload oficial: CPF errado 422 · PAGO ativa · duplicado · ESTORNADO bloqueia.
+- **Pendente (único):** 1 compra no link de teste oficial (exige CPF real, feita pelo Victor) para ver o payload real chegar.
+- Contas/linhas de teste a apagar: `alpha.teste.webhook1124@example.com`, `alpha.teste.cpf1124@example.com`, `checkout_events` com `txn like 'TESTE-%'` ou `txn = '900001'`.
 
 ## Estado do código
 | Item | Valor | Evidência |
