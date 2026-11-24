@@ -5,6 +5,15 @@
 
 **Última atualização:** 17/11/2026 · **Fase atual:** 0 — Bootstrap e auditoria
 
+## Atualização 24/11/2026 — operação de lançamento
+- `main` @ `de95f3e` em produção (`alpha-quiz-five.vercel.app`); `fix/p0-launch` já contida em `main`.
+- Disrupty: produto `11113` (R$ 67,97, único, sem bump/upsell, entrega manual), checkout `https://pay.disruptybr.app/c/OrZ?of=8kD`.
+- Webhook "ALPHA LAUNCH — Vendas" salvo na Disrupty (PAGO + ESTORNADO, só produto 11113) apontando para `/api/checkout?token=…`.
+- Vercel (production): `CHECKOUT_PRODUCT_IDS=11113`, `NEXT_PUBLIC_CHECKOUT_URL`, `CHECKOUT_WEBHOOK_SECRET` **novo** (o antigo foi exposto; rotacionado).
+- Testes em produção com payload no formato oficial: sem token 401 · produto errado ignorado · PAGO sem externalId 422 · PAGO com externalId ativa a conta certa · duplicado · pendente ignorado · ESTORNADO bloqueia a conta da transação (mesmo com outro e-mail) · estorno duplicado · PAGO atrasado após estorno não reativa · estorno sem compra não bloqueia ninguém. Quiz → lead → resultado → /comprar ok. `/api/build/content` sem sessão = 401.
+- **Pendente (único):** compra no link de teste oficial da Disrupty para confirmar que ela devolve o `externalId` no webhook. O checkout de teste exige CPF (preenchido pelo Victor).
+- Linhas de teste a apagar: `checkout_events` com `txn like 'TESTE-%'`; conta `alpha.teste.webhook1124@example.com`.
+
 ## Estado do código
 | Item | Valor | Evidência |
 |---|---|---|
