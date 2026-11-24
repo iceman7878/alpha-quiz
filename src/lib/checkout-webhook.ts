@@ -21,6 +21,7 @@ import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { kindOf, normalize, payloadKeys } from "./checkout";
 import { decodeAnswers, scoreAnswers } from "./quiz";
+import { docHash } from "./account-doc";
 
 export type WebhookEnv = {
   token: string;
@@ -29,6 +30,8 @@ export type WebhookEnv = {
   signatureHeader: string;
   signatureAlgo: "sha1" | "sha256";
   siteUrl: string;
+  /** Chave do HMAC do CPF/CNPJ (ACCOUNT_DOC_PEPPER). Sem ela, só o externalId liga a venda à conta. */
+  docPepper: string;
 };
 
 export function webhookEnv(e: Record<string, string | undefined> = process.env): WebhookEnv {
@@ -42,6 +45,7 @@ export function webhookEnv(e: Record<string, string | undefined> = process.env):
     signatureHeader: e.CHECKOUT_SIGNATURE_HEADER || "",
     signatureAlgo: e.CHECKOUT_SIGNATURE_ALGO === "sha1" ? "sha1" : "sha256",
     siteUrl: e.NEXT_PUBLIC_SITE_URL || "",
+    docPepper: e.ACCOUNT_DOC_PEPPER || "",
   };
 }
 
@@ -151,7 +155,8 @@ export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: S
   }
   if (!body || typeof body !== "object") return res(400, { ok: false, error: "json" });
 
-  const { email, nome, whatsapp, status, ambiguous, sck, txn, products, ref } = normalize(body);
+  const { email, nome, whatsapp, document, status, ambiguous, sck, txn, products, ref: linkRef } = normalize(body);
+  let ref = linkRef;
 
   // Produto de outra oferta (ou sem produto reconhecido): não é deste funil. 200 para não haver reenvio.
   if (!products.some((p) => env.productIds.includes(p))) {
@@ -171,13 +176,37 @@ export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: S
     console.info("[checkout] ignorado (status)", { status, txn, keys: status ? undefined : payloadKeys(body) });
     return res(200, { ok: true, action: "ignored", status });
   }
-  // O estorno é ligado à compra pela transação; para liberar, a compra precisa trazer a conta que iniciou o checkout.
-  if (!txn || (kind === "approved" && !ref)) {
-    console.error("[checkout] payload sem", !txn ? "transação" : "conta vinculada (externalId)", { status, keys: payloadKeys(body) });
-    return res(422, { ok: false, error: !txn ? "sem transação" : "sem conta" });
+  // O estorno é ligado à compra pela transação.
+  if (!txn) {
+    console.error("[checkout] payload sem transação", { status, keys: payloadKeys(body) });
+    return res(422, { ok: false, error: "sem transação" });
   }
 
   if (!db) return res(500, { ok: false, error: "supabase não configurado" });
+
+  // Para liberar, a venda precisa apontar para UMA conta: o externalId do link (se a Disrupty devolver) ou a conta cujo
+  // e-mail E CPF/CNPJ (hash) batem com os da venda — criada pelo próprio comprador em /comprar. Nunca só o e-mail.
+  if (kind === "approved" && !ref) {
+    const hash = docHash(document, env.docPepper);
+    if (email && hash) {
+      const found = await db.rpc("user_id_by_email_doc", { p_email: email, p_doc_hash: hash });
+      if (found.error) {
+        console.error("[checkout] busca da conta:", found.error.message);
+        return res(500, { ok: false, error: "db" });
+      }
+      ref = typeof found.data === "string" ? found.data : "";
+    }
+    if (!ref) {
+      console.error("[checkout] venda sem conta vinculada (externalId ou e-mail + documento)", {
+        txn,
+        temEmail: !!email,
+        temDocumento: !!document,
+        temChave: !!env.docPepper,
+        keys: payloadKeys(body),
+      });
+      return res(422, { ok: false, error: "sem conta" });
+    }
+  }
   const eventId = `${txn}:${kind}`;
 
   // Reembolso / chargeback → bloqueia a conta que ESTA transação liberou (dados ficam guardados; nova compra reativa).

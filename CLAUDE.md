@@ -16,7 +16,7 @@ Funil de quiz low ticket da ALPHA Enterprises, rodado no Instagram do Victor com
 2. Quiz: abertura → **3 perguntas** (ponto de partida, exposição, ritmo) → "montando sua rota…" → **"Seu plano personalizado está pronto."** + nome, WhatsApp (obrigatório), e-mail (opcional), aceite LGPD → rota
 3. 4 rotas: AI Service Builder (serviço com IA), Expertise Builder (produto próprio), Backstage Builder (coprodução), Distribution Builder (distribuição de produtos validados)
 4. Resultado = página de vendas personalizada (rota + frase montada com as respostas + DAY 01) → checkout
-5. Pós-compra: webhook do checkout libera acesso ao app e envia link de login por e-mail
+5. Pós-compra: o comprador cria a conta em `/comprar` (e-mail, senha, CPF) antes do checkout; o webhook libera essa conta pelo `externalId` ou, como o payload oficial da Disrupty não o devolve, por e-mail + CPF (HMAC com `ACCOUNT_DOC_PEPPER`). Sem e-mail/SMTP
 
 ## 7-Day Build (cada dia gera um entregável)
 DAY 01 FIND (direção) · DAY 02 PROBLEM (problema) · DAY 03 OFFER (oferta) · DAY 04 MVP (menor versão que entrega o resultado — definir, não programar) · DAY 05 POSITION (headline, promessa, mensagem, CTA) · DAY 06 DISTRIBUTE (3 conteúdos, 3 hooks, CTA, canal) · DAY 07 LAUNCH (publicar)

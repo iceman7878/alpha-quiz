@@ -1,7 +1,7 @@
 "use client";
 
-// Passo antes do checkout: o comprador cria a conta (ou entra) e segue para a Disrupty com o id da conta em
-// `externalId`. O webhook libera o acesso só para essa conta — sem e-mail de convite.
+// Passo antes do checkout: o comprador cria a conta (e-mail, senha e CPF) ou entra e segue para a Disrupty com o id da
+// conta em `externalId`. O webhook libera só essa conta — pelo externalId ou, se a Disrupty não devolver, por e-mail + CPF.
 
 import { useEffect, useState } from "react";
 import { AuthFrame } from "@/components/area";
@@ -21,6 +21,7 @@ export default function ComprarPage() {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [documento, setDocumento] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(true);
 
@@ -34,8 +35,10 @@ export default function ComprarPage() {
     const mail = email.trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(mail)) return setMsg("Confira o e-mail.");
     if (password.length < 8) return setMsg("A senha precisa ter pelo menos 8 caracteres.");
+    const doc = documento.replace(/\D/g, "");
+    if (mode === "criar" && doc.length !== 11 && doc.length !== 14) return setMsg("Confira o CPF.");
     setBusy(true);
-    const err = mode === "criar" ? await createAccount(mail, password, nome.trim()) : await signIn(mail, password);
+    const err = mode === "criar" ? await createAccount(mail, password, nome.trim(), doc) : await signIn(mail, password);
     const id = err ? null : await currentUserId();
     if (!id) {
       setBusy(false);
@@ -49,7 +52,7 @@ export default function ComprarPage() {
       title={mode === "criar" ? "Crie seu acesso." : "Entre para continuar."}
       lead={
         mode === "criar"
-          ? "Seu login do ALPHA LAUNCH. Depois do pagamento, é com este e-mail e esta senha que você entra no DAY 01."
+          ? "Seu login do ALPHA LAUNCH. No pagamento, use o mesmo e-mail e CPF: é assim que o acesso chega a esta conta."
           : "Entre com a conta que vai receber o acesso."
       }
     >
@@ -64,6 +67,12 @@ export default function ComprarPage() {
           <span>E-mail</span>
           <input value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" autoComplete="email" />
         </label>
+        {mode === "criar" && (
+          <label className="box">
+            <span>CPF (o mesmo do pagamento)</span>
+            <input value={documento} onChange={(e) => setDocumento(e.target.value)} inputMode="numeric" autoComplete="off" maxLength={18} />
+          </label>
+        )}
         <label className="box">
           <span>Senha (mín. 8 caracteres)</span>
           <input

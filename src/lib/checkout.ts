@@ -7,6 +7,8 @@
 // Os valores em inglês (paid, refunded, chargedback…) vêm da documentação antiga e continuam aceitos.
 // AINDA NÃO confirmado: segredo/algoritmo do header X-Signature, status de chargeback e se CANCELADO pode
 // chegar depois de PAGO. Os campos continuam achados por padrão de nome; conferir o 1º evento de teste nos logs (`[checkout]`).
+// O payload oficial NÃO traz o externalId do link (externalTransactionId é o id da adquirente): sem ele, a conta é
+// achada por e-mail + documento (customerDocument), ver checkout-webhook.ts.
 // Hipótese de que o bloqueio depende: o evento de estorno traz o MESMO id de transação do `paid`.
 // Se vier outro id, o estorno não bloqueia ninguém e loga "estorno sem compra registrada" (conferir no 1º estorno de teste).
 
@@ -77,6 +79,8 @@ export function normalize(body: unknown) {
   const email = buyerField(f, /e-?mail/, /^\S+@\S+\.\S+$/, (v) => v.trim().toLowerCase());
   const nome = pick(f, /(buyer|customer|client|comprador|cliente|contact).*(first_?name|name|nome)$|^(name|nome)$/);
   const whatsapp = buyerField(f, /(phone|telefone|celular|mobile|whatsapp)/, /^\d{8,}$/, (v) => v.replace(/\D/g, ""));
+  // CPF/CNPJ do comprador (`customerDocument` no payload oficial): com o e-mail, liga a venda à conta sem externalId.
+  const document = buyerField(f, /(document|documento|cpf|cnpj|tax_?id)/, /^(\d{11}|\d{14})$/, (v) => v.replace(/\D/g, ""));
   // Status: o valor conhecido da Disrupty nos campos *status. Dois valores conhecidos diferentes (ex.: reembolso
   // que ainda carrega o `paid` antigo) = ambíguo: não decide pela ordem do JSON. Sem valor conhecido: o primeiro *status (só para log).
   const statuses = Object.entries(f).filter(([k]) => /(^|\.|_)status$/.test(k));
@@ -105,7 +109,7 @@ export function normalize(body: unknown) {
   // É por ele que o acesso é liberado, nunca pelo e-mail. Dois valores diferentes = ambíguo ("").
   const refs = [...new Set(Object.entries(f).filter(([k, v]) => REF_KEYS.test(k) && UUID.test(v.trim())).map(([, v]) => v.trim().toLowerCase()))];
   const ref = refs.length === 1 ? refs[0] : "";
-  return { email, nome, whatsapp, status, ambiguous, sck, txn, products, ref };
+  return { email, nome, whatsapp, document, status, ambiguous, sck, txn, products, ref };
 }
 
 /** Só os nomes dos campos (sem valores): para descobrir o formato real no primeiro evento sem gravar dados pessoais. */

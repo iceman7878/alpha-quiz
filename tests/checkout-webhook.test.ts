@@ -30,6 +30,8 @@ function fakeDb(
     failSelect?: string;
     failDelete?: boolean;
     failUpdate?: string;
+    /** Contas criadas em /comprar com hash do CPF/CNPJ (busca user_id_by_email_doc). */
+    docAccounts?: { email: string; hash: string; id: string }[];
     /** Roda antes de gravar uma linha (para simular outra entrega no meio). */
     beforeInsert?: (t: string, row: Row) => Promise<void> | void;
   } = {},
@@ -151,6 +153,10 @@ function fakeDb(
     },
     async rpc(fn: string, args: Record<string, unknown>) {
       if (fn === "user_id_by_email") return { data: users.get(String(args.p_email)) ?? null, error: null };
+      if (fn === "user_id_by_email_doc") {
+        const hit = (opts.docAccounts ?? []).find((a) => a.email.toLowerCase() === String(args.p_email).toLowerCase() && a.hash === args.p_doc_hash);
+        return { data: hit?.id ?? null, error: null };
+      }
       assert.equal(fn, "finalize_checkout_claim");
       // Mesma semântica da função do schema.sql, sem await no meio: atômica em relação às outras entregas.
       if (opts.failUpsert || opts.failUpdate === "checkout_events") return { data: null, error: { message: "finalize falhou" } };
@@ -1061,4 +1067,72 @@ test("posse D: pagamento, retomada e estorno → a execução antiga não reativ
   assert.notEqual(a.body.action, "activated");
   assert.equal(f.tables.members[0].access_status, "blocked");
   assert.ok(f.tables.checkout_events.some((e) => e.id === "txn-1:approved" && e.user_id), "o vínculo da compra continua");
+});
+
+
+// ---------- vínculo por e-mail + CPF/CNPJ (payload oficial da Disrupty não traz o externalId) ----------
+
+import { docHash, validDoc } from "../src/lib/account-doc";
+
+const PEPPER = "pepper-de-teste-0123456789abcdef";
+const CPF = "52998224725"; // CPF válido de exemplo (gerador público), não é de ninguém do projeto
+const UID2 = "22222222-2222-4222-8222-222222222222";
+/** Payload no formato oficial (app.disruptybr.app/docs/webhook, v6.7.0). */
+const officialV67 = (over: Record<string, unknown> = {}) => ({
+  id: 98765,
+  productId: "prod-alpha",
+  productName: "ALPHA LAUNCH — 7-Day Build",
+  amount: 6797,
+  status: "PAGO",
+  paymentMethod: "PIX",
+  customerDocument: "529.982.247-25",
+  customerEmail: EMAIL,
+  customerName: "Ana Souza",
+  customerPhone: "+5511988887777",
+  saleItems: [{ offerId: 1, quantity: 1, price: 6797, name: "ALPHA LAUNCH" }],
+  externalTransactionId: "TRX123456",
+  ...over,
+});
+
+test("validDoc: CPF/CNPJ com dígito verificador; repetidos e tamanhos errados são recusados", () => {
+  assert.ok(validDoc(CPF));
+  assert.ok(validDoc("11222333000181"));
+  for (const d of ["52998224724", "11111111111", "123", "11222333000180", ""]) assert.ok(!validDoc(d), d);
+});
+
+test("payload oficial sem externalId: e-mail + CPF batem → libera a conta do /comprar", async () => {
+  const f = fakeDb({ accounts: { [UID2]: "comprador@exemplo.com" }, docAccounts: [{ email: "comprador@exemplo.com", hash: docHash(CPF, PEPPER), id: UID2 }] });
+  const r = await handleCheckoutWebhook(req(officialV67()), env({ docPepper: PEPPER }), f.db);
+  assert.deepEqual([r.status, r.body.action], [200, "activated"]);
+  assert.equal(f.tables.members.find((m) => m.id === UID2)?.access_status, "active");
+  // estorno da mesma venda (mesmo id) bloqueia essa conta
+  const e = await handleCheckoutWebhook(req(officialV67({ status: "ESTORNADO", customerDocument: undefined })), env({ docPepper: PEPPER }), f.db);
+  assert.deepEqual([e.status, e.body.action], [200, "blocked"]);
+  assert.equal(f.tables.members.find((m) => m.id === UID2)?.access_status, "blocked");
+  noPii();
+});
+
+test("só o e-mail não basta: CPF diferente, CPF ausente ou sem chave → 422, ninguém recebe acesso", async () => {
+  const acc = [{ email: "comprador@exemplo.com", hash: docHash(CPF, PEPPER), id: UID2 }];
+  const f = fakeDb({ accounts: { [UID2]: "comprador@exemplo.com" }, docAccounts: acc });
+  const cases: [Record<string, unknown>, Partial<WebhookEnv>][] = [
+    [{ customerDocument: "111.444.777-35" }, { docPepper: PEPPER }],
+    [{ customerDocument: undefined }, { docPepper: PEPPER }],
+    [{}, { docPepper: "" }],
+  ];
+  for (const [over, e] of cases) {
+    const r = await handleCheckoutWebhook(req(officialV67(over)), env(e), f.db);
+    assert.deepEqual([r.status, r.body.error], [422, "sem conta"]);
+  }
+  assert.equal(f.tables.members.length, 0);
+  assert.equal(f.tables.checkout_events.length, 0);
+  noPii();
+});
+
+test("externalId no payload tem prioridade sobre e-mail + CPF", async () => {
+  const f = fakeDb({ accounts: { [UID2]: "outro@exemplo.com" }, docAccounts: [{ email: "comprador@exemplo.com", hash: docHash(CPF, PEPPER), id: UID2 }] });
+  const r = await handleCheckoutWebhook(req(officialV67({ externalId: UID })), env({ docPepper: PEPPER }), f.db);
+  assert.deepEqual([r.status, r.body.action], [200, "activated"]);
+  assert.ok(f.tables.members.some((m) => m.id === UID));
+  assert.ok(!f.tables.members.some((m) => m.id === UID2));
 });

@@ -169,3 +169,21 @@ begin
 end $$;
 revoke all on function public.finalize_checkout_claim(text, text, uuid, text, text, text, text, text, text) from public, anon, authenticated;
 grant execute on function public.finalize_checkout_claim(text, text, uuid, text, text, text, text, text, text) to service_role;
+
+-- Conta do comprador por e-mail + hash do CPF/CNPJ (app_metadata.doc_hash, gravado por /api/conta).
+-- Usada pelo webhook quando a Disrupty não devolve o externalId. Só o servidor (service_role) chama.
+create or replace function public.user_id_by_email_doc(p_email text, p_doc_hash text)
+returns uuid
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select u.id from auth.users u
+  where lower(u.email) = lower(p_email)
+    and coalesce(p_doc_hash, '') <> ''
+    and u.raw_app_meta_data->>'doc_hash' = p_doc_hash
+  limit 1;
+$$;
+revoke all on function public.user_id_by_email_doc(text, text) from public, anon, authenticated;
+grant execute on function public.user_id_by_email_doc(text, text) to service_role;
