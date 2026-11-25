@@ -1136,3 +1136,70 @@ test("externalId no payload tem prioridade sobre e-mail + CPF", async () => {
   assert.ok(f.tables.members.some((m) => m.id === UID));
   assert.ok(!f.tables.members.some((m) => m.id === UID2));
 });
+
+
+// ---------- estorno do order bump (ALPHA Content Vault) não derruba o acesso ao principal ----------
+
+const refundOf = (amount: unknown, over: Record<string, unknown> = {}) => payload({ status: "refunded", amount, ...over });
+
+async function buyMainAndBump() {
+  const f = fakeDb();
+  const paid = await handleCheckoutWebhook(req(payload({ amount: 8594 })), env(), f.db); // principal 67,97 + bump 17,97
+  assert.deepEqual([paid.status, paid.body.action], [200, "activated"]);
+  return f;
+}
+
+test("estorno só do bump (R$ 17,97): mantém o acesso e não grava marca de estorno", async () => {
+  const f = await buyMainAndBump();
+  const r = await handleCheckoutWebhook(req(refundOf(1797)), env(), f.db);
+  assert.deepEqual([r.status, r.body.action, r.body.reason], [200, "ignored", "bump"]);
+  assert.equal(f.tables.members[0].access_status, "active");
+  assert.ok(!f.tables.checkout_events.some((e) => e.id === "txn-1:revoked"));
+  // reenvio do mesmo estorno e valor em texto: igual, sem efeito
+  for (const amount of [1797, "1797"]) {
+    const again = await handleCheckoutWebhook(req(refundOf(amount)), env(), f.db);
+    assert.equal(again.body.reason, "bump");
+  }
+  assert.equal(f.tables.members[0].access_status, "active");
+});
+
+test("estorno do produto principal (R$ 67,97): bloqueia a conta", async () => {
+  const f = await buyMainAndBump();
+  const r = await handleCheckoutWebhook(req(refundOf(6797)), env(), f.db);
+  assert.deepEqual([r.status, r.body.action], [200, "blocked"]);
+  assert.equal(f.tables.members[0].access_status, "blocked");
+});
+
+test("estorno total (R$ 85,94): bloqueia a conta", async () => {
+  const f = await buyMainAndBump();
+  const r = await handleCheckoutWebhook(req(refundOf(8594)), env(), f.db);
+  assert.deepEqual([r.status, r.body.action], [200, "blocked"]);
+  assert.equal(f.tables.members[0].access_status, "blocked");
+});
+
+test("estorno do bump e depois do principal na mesma venda: o segundo bloqueia", async () => {
+  const f = await buyMainAndBump();
+  await handleCheckoutWebhook(req(refundOf(1797)), env(), f.db);
+  assert.equal(f.tables.members[0].access_status, "active");
+  const r = await handleCheckoutWebhook(req(refundOf(6797)), env(), f.db);
+  assert.deepEqual([r.status, r.body.action], [200, "blocked"]);
+  assert.equal(f.tables.members[0].access_status, "blocked");
+});
+
+test("estorno sem valor legível, ou chargedback do total: bloqueia (na dúvida, como sempre)", async () => {
+  for (const amount of [undefined, null, "", "R$ 17,97", 17.97, 0]) {
+    const f = await buyMainAndBump();
+    const r = await handleCheckoutWebhook(req(refundOf(amount)), env(), f.db);
+    assert.equal(r.body.action, "blocked", String(amount));
+  }
+  const f = await buyMainAndBump();
+  assert.equal((await handleCheckoutWebhook(req(refundOf(8594, { status: "chargedback" })), env(), f.db)).body.action, "blocked");
+});
+
+test("estorno do bump no payload oficial (ESTORNADO, e-mail + CPF): acesso mantido", async () => {
+  const f = fakeDb({ accounts: { [UID2]: "comprador@exemplo.com" }, docAccounts: [{ email: "comprador@exemplo.com", hash: docHash(CPF, PEPPER), id: UID2 }] });
+  await handleCheckoutWebhook(req(officialV67({ amount: 8594 })), env({ docPepper: PEPPER }), f.db);
+  const r = await handleCheckoutWebhook(req(officialV67({ status: "ESTORNADO", amount: 1797, customerDocument: undefined })), env({ docPepper: PEPPER }), f.db);
+  assert.deepEqual([r.status, r.body.reason], [200, "bump"]);
+  assert.equal(f.tables.members.find((m) => m.id === UID2)?.access_status, "active");
+});
