@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { APPLICATION_URL } from "@/config";
 import { EVIDENCE, firstMarketTest, fmtBuilt, fmtText, renderOutput, type BuildContent, type Day } from "@/lib/build";
 import { isDemo, loadArea, signOut, type Member, type Progress } from "@/lib/store";
-import { CopyButton, Rail, Reveal } from "./ui";
+import { trackCustom } from "@/lib/tracking";
+import { Arrow, CopyButton, Rail, Reveal } from "./ui";
 
 export { CopyButton } from "./ui";
 
@@ -35,6 +37,70 @@ export function useArea() {
   }, [reload]);
 
   return { state, reload };
+}
+
+const INVITE_KEY = "alpha_convite_aplicacao";
+const INVITE_EVENT = "alpha:convite-aplicacao";
+
+/** Convite fechado ou clicado neste navegador. null = ainda não leu o armazenamento (evita piscar no primeiro render). */
+function useInviteClosed(): [boolean | null, () => void] {
+  const [closed, setClosed] = useState<boolean | null>(null);
+  useEffect(() => {
+    const read = () => {
+      try {
+        setClosed(localStorage.getItem(INVITE_KEY) === "1");
+      } catch {
+        setClosed(false);
+      }
+    };
+    read();
+    window.addEventListener(INVITE_EVENT, read);
+    return () => window.removeEventListener(INVITE_EVENT, read);
+  }, []);
+  const close = useCallback(() => {
+    try {
+      localStorage.setItem(INVITE_KEY, "1");
+    } catch {}
+    window.dispatchEvent(new Event(INVITE_EVENT));
+    setClosed(true);
+  }, []);
+  return [closed, close];
+}
+
+/** Convite para a aplicação do ALPHA OPERATOR: aparece no primeiro acesso, some ao fechar ou clicar. */
+export function ApplicationInvite() {
+  const [closed, close] = useInviteClosed();
+  const visible = closed === false;
+  useEffect(() => {
+    if (visible) trackCustom("convite_aplicacao_view");
+  }, [visible]);
+  if (!visible) return null;
+  return (
+    <section className="invite enter" aria-labelledby="invite-title">
+      <h2 id="invite-title" className="invite__title">
+        Você começou. O próximo passo é não fazer sozinho.
+      </h2>
+      <p className="body">
+        O ALPHA OPERATOR é o acompanhamento individual de 90 dias. A entrada é por aplicação e as vagas são limitadas pela
+        minha agenda.
+      </p>
+      <div className="invite__actions">
+        <a
+          className="btn btn--primary"
+          href={APPLICATION_URL}
+          onClick={() => {
+            trackCustom("convite_aplicacao_click");
+            close();
+          }}
+        >
+          Fazer minha aplicação <Arrow />
+        </a>
+        <button className="btn btn--quiet" type="button" onClick={close}>
+          Fechar
+        </button>
+      </div>
+    </section>
+  );
 }
 
 /** Rail de navegação dos 7 dias — sempre visível: onde estou, onde estive, quanto falta. */
@@ -67,6 +133,10 @@ export function Shell(props: {
   currentDay?: number;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const [inviteClosed] = useInviteClosed();
+  // Na home o convite aparece inteiro; o link discreto só entra depois que ele for fechado (e nas outras telas).
+  const showApplyLink = inviteClosed !== null && (inviteClosed || pathname !== "/build");
   const done = props.progress ? Object.values(props.progress).filter((p) => p.completed).length : 0;
   return (
     <main className="area">
@@ -89,6 +159,11 @@ export function Shell(props: {
           </div>
         )}
         <div className="area__right">
+          {showApplyLink && (
+            <a className="btn btn--quiet" href={APPLICATION_URL} onClick={() => trackCustom("convite_aplicacao_click")}>
+              Aplicação ALPHA OPERATOR
+            </a>
+          )}
           <button
             className="btn btn--quiet"
             onClick={async () => {

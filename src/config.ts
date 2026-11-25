@@ -24,5 +24,8 @@ export const OFFER = {
   priceLabel: "R$ 67,97",
 };
 
+/** Aplicação do ALPHA OPERATOR (Tally). `origem` identifica quem veio do low ticket. */
+export const APPLICATION_URL = "https://tally.so/r/kd1z5Z?origem=lowticket";
+
 /** Link da aplicação para a ALPHA Mentorship (formulário, WhatsApp…). Vazio = botão não aparece. */
 export const MENTORSHIP_URL = process.env.NEXT_PUBLIC_MENTORSHIP_URL || "";

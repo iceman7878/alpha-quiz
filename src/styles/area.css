@@ -102,7 +102,37 @@
   font-size: var(--t-caption);
 }
 .area__right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0 var(--s-5);
   justify-self: end;
+}
+
+/* Convite para a aplicação do ALPHA OPERATOR (primeiro acesso) */
+.invite {
+  display: grid;
+  gap: var(--s-3);
+  justify-items: start;
+  margin-top: var(--s-6);
+  padding: var(--s-5);
+  border: var(--bw) solid var(--line-soft);
+  background: var(--surface-1);
+}
+.invite__title {
+  margin: 0;
+  font-size: var(--t-h3);
+  font-weight: var(--w-light);
+  line-height: var(--lh-heading);
+  letter-spacing: var(--tr-heading);
+}
+.invite__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3) var(--s-5);
+  margin-top: var(--s-2);
 }
 .demo-note {
   margin-top: 0;
