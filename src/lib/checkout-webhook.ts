@@ -22,6 +22,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { kindOf, normalize, payloadKeys } from "./checkout";
 import { decodeAnswers, scoreAnswers } from "./quiz";
 import { docHash } from "./account-doc";
+import { PRICE_CENTS } from "../config";
 
 export type WebhookEnv = {
   token: string;
@@ -110,6 +111,19 @@ async function revokeTxn(db: SupabaseClient, txn: string): Promise<"blocked" | "
   return blocked.error ? null : "blocked";
 }
 
+/**
+ * O estorno é só do order bump? Só com evidência positiva: o valor estornado (centavos, `amount` do payload oficial, ou
+ * um campo explícito de estorno) é exatamente o preço do bump. O principal (R$ 67,97) e o total (R$ 85,94) têm outros
+ * valores e continuam bloqueando; sem valor legível também bloqueia (na dúvida, o comportamento de sempre).
+ */
+function isBumpOnlyRefund(body: unknown): boolean {
+  if (!body || typeof body !== "object") return false;
+  const top = new Map(Object.entries(body as Record<string, unknown>).map(([k, v]) => [k.toLowerCase(), v]));
+  const raw = ["refundedamount", "refunded_amount", "refundamount", "refund_amount", "amount"].map((k) => top.get(k)).find((v) => v !== undefined && v !== null && v !== "");
+  const cents = typeof raw === "number" ? raw : typeof raw === "string" && /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : NaN;
+  return cents === PRICE_CENTS.bump;
+}
+
 /** Prazo de uma entrega viva. A rota declara maxDuration = 30 s; a Disrupty reenvia em 5, 15 e 30 min. */
 const LEASE_MS = 2 * 60_000;
 
@@ -136,7 +150,24 @@ async function eventFinalized(db: SupabaseClient, eventId: string): Promise<bool
   return !error && !!(data as { finalized_at?: string | null } | null)?.finalized_at;
 }
 
+/** Preenchido ao longo da entrega: o que a linha `[webhook_error]` mostra (id da transação e detalhe do erro). */
+type ErrCtx = { txn: string; detail?: string };
+
+/**
+ * Toda resposta de erro (status >= 400: 401, 400, 409, 422, 500, 503) deixa UMA linha `[webhook_error]` com a transação
+ * e o motivo, fácil de filtrar nos logs da Vercel. Nunca inclui e-mail, nome, telefone ou documento.
+ */
 export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: SupabaseClient | null): Promise<WebhookResult> {
+  const ctx: ErrCtx = { txn: "" };
+  const out = await handle(req, env, db, ctx);
+  if (out.status >= 400) {
+    const motivo = [String(out.body.error ?? "desconhecido"), ctx.detail].filter(Boolean).join(": ");
+    console.error(`[webhook_error] txn=${ctx.txn || "-"} status=${out.status} motivo=${motivo}`);
+  }
+  return out;
+}
+
+async function handle(req: Request, env: WebhookEnv, db: SupabaseClient | null, ctx: ErrCtx): Promise<WebhookResult> {
   const problem = configProblem(env);
   if (problem) {
     console.error("[checkout] fechado:", problem);
@@ -157,6 +188,7 @@ export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: S
 
   const { email, nome, whatsapp, document, status, ambiguous, sck, txn, products, ref: linkRef } = normalize(body);
   let ref = linkRef;
+  ctx.txn = txn;
 
   // Produto de outra oferta (ou sem produto reconhecido): não é deste funil. 200 para não haver reenvio.
   if (!products.some((p) => env.productIds.includes(p))) {
@@ -192,6 +224,7 @@ export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: S
       const found = await db.rpc("user_id_by_email_doc", { p_email: email, p_doc_hash: hash });
       if (found.error) {
         console.error("[checkout] busca da conta:", found.error.message);
+        ctx.detail = found.error.message;
         return res(500, { ok: false, error: "db" });
       }
       ref = typeof found.data === "string" ? found.data : "";
@@ -214,9 +247,16 @@ export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: S
   // Se a conta tem outra compra paga e não reembolsada (ex.: pagou duas vezes e estornou uma), o acesso continua.
   // Reenvio refaz o efeito (idempotente); em erro a marca fica, para o `paid` atrasado continuar barrado.
   if (kind === "revoked") {
+    // Estorno só do order bump: o acesso ao produto principal continua. Sem marca: não afeta um `paid` atrasado nem
+    // um estorno posterior do principal desta mesma transação.
+    if (isBumpOnlyRefund(body)) {
+      console.info("[checkout] estorno só do bump; acesso mantido", { txn });
+      return res(200, { ok: true, action: "ignored", reason: "bump" });
+    }
     const mark = await db.from("checkout_events").insert({ id: eventId, txn, kind, status, email: email || null });
     if (mark.error && mark.error.code !== "23505") {
       console.error("[checkout] checkout_events:", mark.error.message);
+      ctx.detail = mark.error.message;
       return res(500, { ok: false, error: "db" });
     }
     const out = await revokeTxn(db, txn);
@@ -237,6 +277,7 @@ export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: S
   const refunded = await revokedMark();
   if (refunded.error) {
     console.error("[checkout] checkout_events:", refunded.error.message);
+    ctx.detail = refunded.error.message;
     return res(500, { ok: false, error: "db" });
   }
   if (refunded.data) {
@@ -253,6 +294,7 @@ export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: S
   if (claim.error) {
     if (claim.error.code !== "23505") {
       console.error("[checkout] checkout_events:", claim.error.message);
+      ctx.detail = claim.error.message;
       return res(500, { ok: false, error: "db" });
     }
     if (await eventFinalized(db, eventId)) return res(200, { ok: true, action: "duplicate" });
@@ -265,6 +307,7 @@ export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: S
   // Só desfaz a PRÓPRIA marca: se outra execução retomou, o token não bate e nada é apagado.
   const fail = async (error: string, detail?: string) => {
     console.error("[checkout] falha", { error, detail, txn, kind });
+    ctx.detail = detail;
     const undo = await db.from("checkout_events").delete().eq("id", eventId).eq("claim_token", token);
     if (undo.error) console.error("[checkout] marca não desfeita; o reenvio retoma após o prazo", { txn, kind });
     return res(500, { ok: false, error });
@@ -322,6 +365,7 @@ export async function handleCheckoutWebhook(req: Request, env: WebhookEnv, db: S
   const late = await revokedMark();
   if (late.error) {
     console.error("[checkout] checkout_events:", late.error.message);
+    ctx.detail = late.error.message;
     return res(500, { ok: false, error: "db" });
   }
   if (late.data) {

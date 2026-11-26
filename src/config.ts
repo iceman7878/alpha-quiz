@@ -24,5 +24,19 @@ export const OFFER = {
   priceLabel: "R$ 67,97",
 };
 
+/**
+ * Preços do checkout em centavos, como a Disrupty envia em `amount`. O webhook usa o valor do bump para reconhecer o
+ * estorno só do order bump (src/lib/checkout-webhook.ts). ATENÇÃO: mudar o preço na Disrupty exige mudar aqui
+ * (e OFFER.price/priceLabel acima); senão um estorno do bump passa a bloquear o acesso principal.
+ */
+export const PRICE_CENTS = {
+  main: 6797, // ALPHA LAUNCH
+  bump: 1797, // ALPHA Content Vault
+  total: 6797 + 1797, // principal + bump
+} as const;
+
+/** Aplicação do ALPHA OPERATOR (Tally). `origem` identifica quem veio do low ticket. */
+export const APPLICATION_URL = "https://tally.so/r/kd1z5Z?origem=lowticket";
+
 /** Link da aplicação para a ALPHA Mentorship (formulário, WhatsApp…). Vazio = botão não aparece. */
 export const MENTORSHIP_URL = process.env.NEXT_PUBLIC_MENTORSHIP_URL || "";

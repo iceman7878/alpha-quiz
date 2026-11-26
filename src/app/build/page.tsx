@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { AreaFallback, BuildStack, DayRail, FirstMarketTest, Shell, useArea } from "@/components/area";
+import { ApplicationInvite, AreaFallback, BuildStack, DayRail, FirstMarketTest, Shell, useArea } from "@/components/area";
 import { Arrow, Tick } from "@/components/ui";
 import { LEVELS } from "@/lib/build";
 import { ROUTES } from "@/lib/quiz";
@@ -73,6 +73,8 @@ export default function BuildHome() {
           </span>
         </Link>
       )}
+
+      <ApplicationInvite />
 
       <section className="seq" aria-label="Sequência">
         <span className="label">Sequência</span>
