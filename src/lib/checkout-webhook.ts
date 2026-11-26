@@ -22,6 +22,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { kindOf, normalize, payloadKeys } from "./checkout";
 import { decodeAnswers, scoreAnswers } from "./quiz";
 import { docHash } from "./account-doc";
+import { PRICE_CENTS } from "../config";
 
 export type WebhookEnv = {
   token: string;
@@ -110,9 +111,6 @@ async function revokeTxn(db: SupabaseClient, txn: string): Promise<"blocked" | "
   return blocked.error ? null : "blocked";
 }
 
-/** Preço do order bump (ALPHA Content Vault, R$ 17,97), em centavos. Só serve para reconhecer o estorno do bump. */
-export const BUMP_AMOUNT_CENTS = 1797;
-
 /**
  * O estorno é só do order bump? Só com evidência positiva: o valor estornado (centavos, `amount` do payload oficial, ou
  * um campo explícito de estorno) é exatamente o preço do bump. O principal (R$ 67,97) e o total (R$ 85,94) têm outros
@@ -123,7 +121,7 @@ function isBumpOnlyRefund(body: unknown): boolean {
   const top = new Map(Object.entries(body as Record<string, unknown>).map(([k, v]) => [k.toLowerCase(), v]));
   const raw = ["refundedamount", "refunded_amount", "refundamount", "refund_amount", "amount"].map((k) => top.get(k)).find((v) => v !== undefined && v !== null && v !== "");
   const cents = typeof raw === "number" ? raw : typeof raw === "string" && /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : NaN;
-  return cents === BUMP_AMOUNT_CENTS;
+  return cents === PRICE_CENTS.bump;
 }
 
 /** Prazo de uma entrega viva. A rota declara maxDuration = 30 s; a Disrupty reenvia em 5, 15 e 30 min. */
