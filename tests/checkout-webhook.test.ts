@@ -1203,3 +1203,47 @@ test("estorno do bump no payload oficial (ESTORNADO, e-mail + CPF): acesso manti
   assert.deepEqual([r.status, r.body.reason], [200, "bump"]);
   assert.equal(f.tables.members.find((m) => m.id === UID2)?.access_status, "active");
 });
+
+
+// ---------- [webhook_error]: toda resposta de erro deixa uma linha filtrável com a transação e o motivo ----------
+
+const errLines = () => logs.filter((l) => l.includes("[webhook_error]"));
+
+test("[webhook_error]: 422 sem conta registra a transação e o motivo", async () => {
+  const f = fakeDb();
+  const r = await handleCheckoutWebhook(req(officialV67({ customerDocument: undefined })), env({ docPepper: PEPPER }), f.db);
+  assert.equal(r.status, 422);
+  assert.equal(errLines().length, 1);
+  assert.ok(errLines()[0].includes("txn=98765 status=422 motivo=sem conta"));
+  noPii();
+});
+
+test("[webhook_error]: 401 de token errado e 400 de JSON usam txn=-", async () => {
+  const f = fakeDb();
+  await handleCheckoutWebhook(req(payload(), { token: "tok-errado-0123456789abcdef0123456789" }), env(), f.db);
+  await handleCheckoutWebhook(req("{nao é json"), env(), f.db);
+  const l = errLines();
+  assert.equal(l.length, 2);
+  assert.ok(l[0].includes("txn=- status=401"));
+  assert.ok(l[1].includes("txn=- status=400 motivo=json"));
+});
+
+test("[webhook_error]: falha de banco (500) traz o detalhe; 503 de configuração também registra", async () => {
+  const f = fakeDb({ failSelect: "checkout_events" });
+  const r = await handleCheckoutWebhook(req(payload()), env(), f.db);
+  assert.equal(r.status, 500);
+  assert.ok(errLines().some((l) => l.includes("txn=txn-1 status=500 motivo=db: select falhou")));
+  logs = [];
+  const closed = await handleCheckoutWebhook(req(payload()), env({ token: "" }), fakeDb().db);
+  assert.equal(closed.status, 503);
+  assert.ok(errLines()[0].includes("txn=- status=503"));
+});
+
+test("[webhook_error]: respostas de sucesso (ativação, bump, duplicado) não geram a linha", async () => {
+  const f = fakeDb();
+  await handleCheckoutWebhook(req(payload()), env(), f.db);
+  await handleCheckoutWebhook(req(payload()), env(), f.db);
+  await handleCheckoutWebhook(req(payload({ status: "refunded", amount: 1797 })), env(), f.db);
+  await handleCheckoutWebhook(req(payload({ status: "processing" })), env(), f.db);
+  assert.equal(errLines().length, 0);
+});
